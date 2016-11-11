@@ -1,0 +1,15 @@
+name: Decorator
+description: Teleport player around the world to decorate chunks
+author: StarTux
+version: 0.1
+main: com.winthier.decorator.DecoratorPlugin
+depend: [ ]
+commands:
+  decorator:
+    description: Decorator
+    usage: '/<command> <world-radius> <tick-interval> [block-interval] [z-start]'
+    permission: decorator.decorator
+permissions:
+  decorator.decorator:
+    description: Use the "/decorator" command.
+    default: op
