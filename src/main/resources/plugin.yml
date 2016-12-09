@@ -7,7 +7,9 @@ depend: [ ]
 commands:
   decorator:
     description: Decorator
-    usage: '/<command> <world-radius> <tick-interval> [block-interval] [z-start]'
+    usage: |-
+      /<command> <world-radius> <tick-interval> [interval-x] [interval-z] [z-start]
+      /<command> cancel
     permission: decorator.decorator
 permissions:
   decorator.decorator:
