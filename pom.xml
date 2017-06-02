@@ -23,13 +23,6 @@
     </repository>
   </repositories>
   <dependencies>
-    <!-- JUnit -->
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>3.8.1</version>
-      <scope>test</scope>
-    </dependency>
     <!-- Spigot-API -->
     <dependency>
       <groupId>org.spigotmc</groupId>
@@ -41,13 +34,6 @@
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
       <version>1.14.8</version>
-      <scope>provided</scope>
-    </dependency>
-    <!-- Vault -->
-    <dependency>
-      <groupId>net.milkbowl.vault</groupId>
-      <artifactId>VaultAPI</artifactId>
-      <version>1.5</version>
       <scope>provided</scope>
     </dependency>
   </dependencies>

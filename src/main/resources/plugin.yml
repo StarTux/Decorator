@@ -6,10 +6,15 @@ main: com.winthier.decorator.DecoratorPlugin
 depend: [ ]
 commands:
   decorator:
+    aliases: [ dec ]
     description: Decorator
     usage: |-
-      /<command> <world-radius> <tick-interval> [interval-x] [interval-z] [z-start]
-      /<command> cancel
+      /dec init
+      /dec pause
+      /dec reload
+      /dec save
+      /dec cancel
+      /dec info
     permission: decorator.decorator
 permissions:
   decorator.decorator:
