@@ -160,7 +160,7 @@ public final class DecoratorPlugin extends JavaPlugin {
             todo.remove(nextVec);
             int x = nextVec.x * 16 + 8;
             int z = nextVec.z * 16 + 8;
-            Location location = world.getHighestBlockAt(x, z).getLocation();
+            Location location = world.getHighestBlockAt(x, z).getLocation().add(0.5, 0.1, 0.5);
             Location playerLocation = player.getLocation();
             location.setYaw(playerLocation.getYaw());
             location.setPitch(playerLocation.getPitch());
