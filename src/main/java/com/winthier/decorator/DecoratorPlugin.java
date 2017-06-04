@@ -53,14 +53,13 @@ public final class DecoratorPlugin extends JavaPlugin {
         }
         if (cmd.equals("init") && args.length == 1) {
             World world = getServer().getWorlds().get(0);
-            Location center = world.getWorldBorder().getCenter();
-            double size = world.getWorldBorder().getSize();
-            if (size > 100000) {
+            double radius = world.getWorldBorder().getSize() * 0.5;
+            if (radius > 100000) {
                 sender.sendMessage("World border too large!");
                 return true;
             }
-            Chunk min = center.add(size * -0.5, 0, size * -0.5).getChunk();
-            Chunk max = center.add(size * 0.5, 0, size * 0.5).getChunk();
+            Chunk min = world.getWorldBorder().getCenter().add(-radius, 0, -radius).getChunk();
+            Chunk max = world.getWorldBorder().getCenter().add(radius, 0, radius).getChunk();
             todo = new HashSet<>();
             for (int z = min.getZ() + 1; z < max.getZ(); z += 1) {
                 for (int x = min.getX() + 1; x < max.getX(); x += 1) {
