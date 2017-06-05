@@ -194,7 +194,6 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         World world = getServer().getWorlds().get(0);
         if (!world.equals(event.getWorld())) return;
         Vec vec = new Vec(event.getChunk().getX(), event.getChunk().getZ());
-        if (debug) getLogger().info("POPULATE " + vec);
         if (!todo.remove(vec)) return;
         Player causingPlayer = null;
         int minDist = 0;
@@ -207,6 +206,10 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             }
         }
         if (causingPlayer != null) populateDidHappen.add(causingPlayer.getUniqueId());
+        if (debug) {
+            String playerName = causingPlayer == null ? "Unknown" : causingPlayer.getName();
+            getLogger().info("POPULATE " + vec.x + " " + vec.z + " " + playerName);
+        }
         if (todo.size() % 10000 == 0) {
             printTodoProgressReport();
             saveTodo();
