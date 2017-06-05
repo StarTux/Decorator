@@ -27,6 +27,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     private int total;
     private boolean paused, debug;
     private final Map<UUID, Vec> anchors = new HashMap<>();
+    private final Set<UUID> populateDidHappen = new HashSet<>();
 
     @Value
     final class Vec {
@@ -145,7 +146,8 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     void onTick() {
         if (paused || todo == null || todo.isEmpty()) return;
         World world = getServer().getWorlds().get(0);
-        for (Player player: getServer().getOnlinePlayers()) {
+        for (Player player: world.getPlayers()) {
+            if (populateDidHappen.remove(player.getUniqueId())) continue;
             Vec anchor = anchors.get(player.getUniqueId());
             if (anchor == null) {
                 Chunk chunk = player.getLocation().getChunk();
@@ -157,8 +159,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             Vec nextVec = null;
             int minDist = 0;
             for (Vec vec: todo) {
-                int dist = Math.max(Math.abs(vec.x - chunkX),
-                                    Math.abs(vec.z - chunkZ));
+                int dist = Math.max(Math.abs(vec.x - chunkX), Math.abs(vec.z - chunkZ));
                 if (nextVec == null || minDist > dist) {
                     nextVec = vec;
                     minDist = dist;
@@ -195,6 +196,17 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         Vec vec = new Vec(event.getChunk().getX(), event.getChunk().getZ());
         if (debug) getLogger().info("POPULATE " + vec);
         if (!todo.remove(vec)) return;
+        Player causingPlayer = null;
+        int minDist = 0;
+        for (Player player: world.getPlayers()) {
+            Chunk chunk = player.getLocation().getChunk();
+            int dist = Math.max(Math.abs(vec.x - chunk.getX()), Math.abs(vec.z - chunk.getZ()));
+            if (causingPlayer == null || dist < minDist) {
+                causingPlayer = player;
+                minDist = dist;
+            }
+        }
+        if (causingPlayer != null) populateDidHappen.add(causingPlayer.getUniqueId());
         if (todo.size() % 10000 == 0) {
             printTodoProgressReport();
             saveTodo();
