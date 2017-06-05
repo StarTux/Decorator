@@ -17,12 +17,15 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.world.ChunkPopulateEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public final class DecoratorPlugin extends JavaPlugin {
+public final class DecoratorPlugin extends JavaPlugin implements Listener {
     private Set<Vec> todo;
     private int total;
-    private boolean paused;
+    private boolean paused, debug;
     private final Map<UUID, Vec> anchors = new HashMap<>();
 
     @Value
@@ -37,6 +40,7 @@ public final class DecoratorPlugin extends JavaPlugin {
         getLogger().info("Interval " + interval);
         getServer().getScheduler().runTaskTimer(this, () -> onTick(), interval, interval);
         loadTodo();
+        getServer().getPluginManager().registerEvents(this, this);
     }
 
     @Override
@@ -74,6 +78,13 @@ public final class DecoratorPlugin extends JavaPlugin {
                 sender.sendMessage("Decorator paused");
             } else {
                 sender.sendMessage("Decorator unpaused");
+            }
+        } else if (cmd.equals("debug") && args.length == 1) {
+            debug = !debug;
+            if (debug) {
+                sender.sendMessage("Debug mode enabled");
+            } else {
+                sender.sendMessage("Debug mode disabled");
             }
         } else if (cmd.equals("reload") && args.length == 1) {
             loadTodo();
@@ -163,11 +174,10 @@ public final class DecoratorPlugin extends JavaPlugin {
             Location playerLocation = player.getLocation();
             location.setYaw(playerLocation.getYaw());
             location.setPitch(playerLocation.getPitch());
+            player.setFlying(true);
             player.teleport(location);
-            if (todo.size() % 1000 == 0) {
-                int done = total - todo.size();
-                int percent = done * 100 / total;
-                getLogger().info(String.format("%d/%d Chunks done (%d%%)", done, total, percent));
+            if (todo.size() % 10000 == 0) {
+                printTodoProgressReport();
                 saveTodo();
                 world.save();
             }
@@ -176,5 +186,25 @@ public final class DecoratorPlugin extends JavaPlugin {
             todo = null;
             getLogger().info("Done!");
         }
+    }
+
+    @EventHandler
+    public void onChunkPopulate(ChunkPopulateEvent event) {
+        World world = getServer().getWorlds().get(0);
+        if (!world.equals(event.getWorld())) return;
+        Vec vec = new Vec(event.getChunk().getX(), event.getChunk().getZ());
+        if (debug) getLogger().info("POPULATE " + vec);
+        if (!todo.remove(vec)) return;
+        if (todo.size() % 10000 == 0) {
+            printTodoProgressReport();
+            saveTodo();
+            world.save();
+        }
+    }
+
+    void printTodoProgressReport() {
+        int done = total - todo.size();
+        int percent = done * 100 / total;
+        getLogger().info(String.format("%d/%d Chunks done (%d%%)", done, total, percent));
     }
 }
