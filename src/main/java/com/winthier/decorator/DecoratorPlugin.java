@@ -144,9 +144,14 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     }
 
     void onTick() {
-        if (paused || todo == null || todo.isEmpty()) return;
+        if (paused || todo == null) return;
         World world = getServer().getWorlds().get(0);
         for (Player player: world.getPlayers()) {
+            if (todo.isEmpty()) {
+                todo = null;
+                getLogger().info("Done!");
+                return;
+            }
             if (populateDidHappen.remove(player.getUniqueId())) continue;
             Vec anchor = anchors.get(player.getUniqueId());
             if (anchor == null) {
@@ -182,10 +187,6 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 saveTodo();
                 world.save();
             }
-        }
-        if (todo.isEmpty()) {
-            todo = null;
-            getLogger().info("Done!");
         }
     }
 
