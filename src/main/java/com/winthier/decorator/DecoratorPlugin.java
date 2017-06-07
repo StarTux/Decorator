@@ -180,6 +180,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             Location playerLocation = player.getLocation();
             location.setYaw(playerLocation.getYaw());
             location.setPitch(playerLocation.getPitch());
+            location.getBlock().getType();
             player.setFlying(true);
             player.teleport(location);
             if (todo.size() % 10000 == 0) {
