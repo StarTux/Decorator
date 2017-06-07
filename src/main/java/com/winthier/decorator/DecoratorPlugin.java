@@ -192,6 +192,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
 
     @EventHandler
     public void onChunkPopulate(ChunkPopulateEvent event) {
+        if (todo == null) return;
         World world = getServer().getWorlds().get(0);
         if (!world.equals(event.getWorld())) return;
         Vec vec = new Vec(event.getChunk().getX(), event.getChunk().getZ());
