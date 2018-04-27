@@ -37,6 +37,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
         reloadConfig();
+        saveDefaultConfig();
         int interval = getConfig().getInt("interval");
         getLogger().info("Interval " + interval);
         getServer().getScheduler().runTaskTimer(this, () -> onTick(), interval, interval);
