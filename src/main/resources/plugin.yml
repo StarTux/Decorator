@@ -2,6 +2,8 @@ name: Decorator
 description: Teleport player around the world to decorate chunks
 author: StarTux
 version: 0.1
+api-version: 1.13
+website: https://cavetale.com
 main: com.winthier.decorator.DecoratorPlugin
 depend: [ ]
 commands:
