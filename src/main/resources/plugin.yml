@@ -17,6 +17,7 @@ commands:
       /dec save
       /dec cancel
       /dec info
+      /dec fake
     permission: decorator.decorator
 permissions:
   decorator.decorator:

@@ -6,7 +6,7 @@
   <packaging>jar</packaging>
   <version>0.1-SNAPSHOT</version>
   <name>Decorator</name>
-  <url>http://www.winthier.com</url>
+  <url>https://cavetale.com</url>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
@@ -16,13 +16,17 @@
       <id>spigot-repo</id>
       <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
     </repository>
+    <repository>
+      <id>jitpack.io</id>
+      <url>https://jitpack.io</url>
+    </repository>
   </repositories>
   <dependencies>
     <!-- Spigot-API -->
     <dependency>
       <groupId>org.spigotmc</groupId>
       <artifactId>spigot-api</artifactId>
-      <version>1.13-pre7-R0.1-SNAPSHOT</version>
+      <version>1.13.1-R0.1-SNAPSHOT</version>
     </dependency>
     <!-- Lombok -->
     <dependency>
@@ -31,8 +35,30 @@
       <version>1.14.8</version>
       <scope>provided</scope>
     </dependency>
+    <!-- MCProtocolLib -->
+    <dependency>
+      <groupId>com.github.steveice10</groupId>
+      <artifactId>mcprotocollib</artifactId>
+      <version>1.13.1-1-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>com.github.steveice10</groupId>
+      <artifactId>opennbt</artifactId>
+      <version>1.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.github.steveice10</groupId>
+      <artifactId>packetlib</artifactId>
+      <version>1.3</version>
+    </dependency>
+    <dependency>
+      <groupId>com.github.steveice10</groupId>
+      <artifactId>mcauthlib</artifactId>
+      <version>1.0</version>
+    </dependency>
   </dependencies>
   <build>
+    <finalName>${project.name}</finalName>
     <plugins>
       <!-- Java 8 -->
       <plugin>
@@ -48,6 +74,56 @@
             <arg>-Xlint:unchecked</arg>
           </compilerArgs>
         </configuration>
+      </plugin>
+      <!-- Shade -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <version>3.0.0</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <configuration>
+              <artifactSet>
+                <includes>
+                  <include>com.github.steveice10:mcprotocollib</include>
+                  <include>com.github.steveice10:opennbt</include>
+                  <include>com.github.steveice10:packetlib</include>
+                  <include>com.github.steveice10:mcauthlib</include>
+                </includes>
+              </artifactSet>
+              <filters>
+                <filter>
+                  <artifact>com.github.steveice10:mcprotocollib</artifact>
+                  <includes>
+                    <include>com/github/steveice10/**</include>
+                  </includes>
+                </filter>
+                <filter>
+                  <artifact>com.github.steveice10:opennbt</artifact>
+                  <includes>
+                    <include>com/github/steveice10/**</include>
+                  </includes>
+                </filter>
+                <filter>
+                  <artifact>com.github.steveice10:packetlib</artifact>
+                  <includes>
+                    <include>com/github/steveice10/**</include>
+                  </includes>
+                </filter>
+                <filter>
+                  <artifact>com.github.steveice10:mcauthlib</artifact>
+                  <includes>
+                    <include>com/github/steveice10/**</include>
+                  </includes>
+                </filter>
+              </filters>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
