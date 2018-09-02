@@ -1,36 +1,11 @@
 package com.winthier.decorator;
 
-import com.github.steveice10.mc.auth.data.GameProfile;
-import com.github.steveice10.mc.auth.exception.request.RequestException;
 import com.github.steveice10.mc.protocol.MinecraftConstants;
 import com.github.steveice10.mc.protocol.MinecraftProtocol;
-import com.github.steveice10.mc.protocol.ServerLoginHandler;
-import com.github.steveice10.mc.protocol.data.SubProtocol;
-import com.github.steveice10.mc.protocol.data.game.entity.player.GameMode;
-import com.github.steveice10.mc.protocol.data.game.setting.Difficulty;
-import com.github.steveice10.mc.protocol.data.game.world.WorldType;
-import com.github.steveice10.mc.protocol.data.message.ChatColor;
-import com.github.steveice10.mc.protocol.data.message.ChatFormat;
 import com.github.steveice10.mc.protocol.data.message.Message;
-import com.github.steveice10.mc.protocol.data.message.MessageStyle;
-import com.github.steveice10.mc.protocol.data.message.TextMessage;
-import com.github.steveice10.mc.protocol.data.message.TranslationMessage;
-import com.github.steveice10.mc.protocol.data.status.PlayerInfo;
-import com.github.steveice10.mc.protocol.data.status.ServerStatusInfo;
-import com.github.steveice10.mc.protocol.data.status.VersionInfo;
-import com.github.steveice10.mc.protocol.data.status.handler.ServerInfoBuilder;
-import com.github.steveice10.mc.protocol.data.status.handler.ServerInfoHandler;
-import com.github.steveice10.mc.protocol.data.status.handler.ServerPingTimeHandler;
 import com.github.steveice10.mc.protocol.packet.ingame.client.ClientChatPacket;
-import com.github.steveice10.mc.protocol.packet.ingame.server.ServerChatPacket;
 import com.github.steveice10.mc.protocol.packet.ingame.server.ServerJoinGamePacket;
 import com.github.steveice10.packetlib.Client;
-import com.github.steveice10.packetlib.Server;
-import com.github.steveice10.packetlib.Session;
-import com.github.steveice10.packetlib.event.server.ServerAdapter;
-import com.github.steveice10.packetlib.event.server.ServerClosedEvent;
-import com.github.steveice10.packetlib.event.server.SessionAddedEvent;
-import com.github.steveice10.packetlib.event.server.SessionRemovedEvent;
 import com.github.steveice10.packetlib.event.session.DisconnectedEvent;
 import com.github.steveice10.packetlib.event.session.PacketReceivedEvent;
 import com.github.steveice10.packetlib.event.session.SessionAdapter;
@@ -39,7 +14,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.Proxy;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -70,6 +44,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     private String worldName;
     private int interval;
     private int fakePlayers, fakeCount = (int)System.nanoTime() % 10000, fakeCooldown;
+    private int tickCooldown;
 
     @Value
     final class Vec {
@@ -78,14 +53,19 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
+        importConfig();
+        loadTodo();
+        getServer().getPluginManager().registerEvents(this, this);
+        getServer().getScheduler().runTaskTimer(this, () -> onTick(), 1, 1);
+    }
+
+    void importConfig() {
         reloadConfig();
         saveDefaultConfig();
         interval = getConfig().getInt("interval");
         fakePlayers = getConfig().getInt("fake-players");
-        getLogger().info("Interval " + interval);
-        getServer().getScheduler().runTaskTimer(this, () -> onTick(), interval, interval);
-        loadTodo();
-        getServer().getPluginManager().registerEvents(this, this);
+        getLogger().info("Interval: " + interval);
+        getLogger().info("Fake Players: " + fakePlayers);
     }
 
     @Override
@@ -152,8 +132,8 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             break;
         case "reload":
             if (args.length == 1) {
-                loadTodo();
-                sender.sendMessage("Reloaded");
+                importConfig();
+                sender.sendMessage("Config Reloaded");
                 return true;
             }
             break;
@@ -174,6 +154,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                     int percent = done * 100 / total;
                     sender.sendMessage(String.format("%d/%d Chunks done (%d%%)", done, total, percent));
                 }
+                sender.sendMessage("Free: " + (Runtime.getRuntime().freeMemory() / 1024 / 1024) + " MiB");
                 if (paused) sender.sendMessage("Paused");
                 return true;
             }
@@ -181,7 +162,8 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         case "save":
             if (args.length == 1) {
                 saveTodo();
-                sender.sendMessage("Saved");
+                if (world != null) world.save();
+                sender.sendMessage("Todo and world saved");
                 return true;
             }
             break;
@@ -191,11 +173,15 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 sender.sendMessage("Fake user logged in.");
                 return true;
             }
+            break;
+        default:
+            break;
         }
-        return true;
+        return false;
     }
 
     void loadTodo() {
+        getLogger().info("Loading todos. This may take a while...");
         todo = null;
         YamlConfiguration config = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "todo.yml"));
         if (!config.isSet("todo")) return;
@@ -206,7 +192,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         }
         worldName = config.getString("world");
         total = config.getInt("total");
-        getLogger().info("" + todo.size() + " todos loaded");
+        getLogger().info("..." + todo.size() + " todos loaded");
     }
 
     void saveTodo() {
@@ -230,13 +216,24 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
 
     void onTick() {
         if (paused || todo == null) return;
+        if (tickCooldown > 0) {
+            tickCooldown -= 1;
+            return;
+        }
+        tickCooldown = interval;
+        if (Runtime.getRuntime().freeMemory() < (long)(1024 * 1024 * 16)) {
+            getLogger().info("Low on memory. Waiting 10 seconds...");
+            tickCooldown = 200;
+            Runtime.getRuntime().gc();
+            return;
+        }
         if (world == null && worldName == null) return;
         if (world == null) world = getServer().getWorld(worldName);
         if (fakeCooldown <= 0 && getServer().getOnlinePlayers().size() < fakePlayers) {
             spawnFakePlayer("fake" + fakeCount++);
             fakeCooldown = 20;
         }
-        if (fakeCooldown > 0) fakeCooldown -= interval;
+        if (fakeCooldown > 0) fakeCooldown -= 1;
         for (Player player: getServer().getOnlinePlayers()) {
             if (todo.isEmpty()) {
                 todo = null;
@@ -328,14 +325,14 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         client.getSession().addListener(new SessionAdapter() {
             @Override
             public void packetReceived(PacketReceivedEvent event) {
-                if(event.getPacket() instanceof ServerJoinGamePacket) {
+                if (event.getPacket() instanceof ServerJoinGamePacket) {
                     event.getSession().send(new ClientChatPacket(username + " says hello."));
                 }
             }
             @Override
             public void disconnected(DisconnectedEvent event) {
                 System.out.println("Disconnected: " + Message.fromString(event.getReason()).getFullText());
-                if(event.getCause() != null) {
+                if (event.getCause() != null) {
                     event.getCause().printStackTrace();
                 }
             }

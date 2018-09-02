@@ -12,8 +12,8 @@ commands:
     description: Decorator
     usage: |-
       /dec init
-      /dec pause
       /dec reload
+      /dec pause
       /dec save
       /dec cancel
       /dec info
