@@ -23,6 +23,7 @@ import java.util.UUID;
 import lombok.Value;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.command.Command;
@@ -269,6 +270,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             location.setYaw(playerLocation.getYaw());
             location.setPitch(playerLocation.getPitch());
             location.getBlock().getType();
+            player.setGameMode(GameMode.CREATIVE);
             player.setAllowFlight(true);
             player.setFlying(true);
             player.teleport(location);
