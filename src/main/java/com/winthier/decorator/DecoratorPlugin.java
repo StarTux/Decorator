@@ -46,6 +46,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     private int interval;
     private int fakePlayers, fakeCount = (int)System.nanoTime() % 10000, fakeCooldown;
     private int tickCooldown;
+    private int memoryThreshold;
 
     @Value
     final class Vec {
@@ -65,6 +66,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         saveDefaultConfig();
         interval = getConfig().getInt("interval");
         fakePlayers = getConfig().getInt("fake-players");
+        memoryThreshold = getConfig().getInt("memory-threshold");
         getLogger().info("Interval: " + interval);
         getLogger().info("Fake Players: " + fakePlayers);
     }
@@ -222,7 +224,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             return;
         }
         tickCooldown = interval;
-        if (Runtime.getRuntime().freeMemory() < (long)(1024 * 1024 * 16)) {
+        if (Runtime.getRuntime().freeMemory() < (long)(1024 * 1024 * memoryThreshold)) {
             getLogger().info("Low on memory. Waiting 10 seconds...");
             tickCooldown = 200;
             Runtime.getRuntime().gc();
