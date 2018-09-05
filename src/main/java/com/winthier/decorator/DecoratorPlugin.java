@@ -227,9 +227,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         if (Runtime.getRuntime().freeMemory() < (long)(1024 * 1024 * memoryThreshold)) {
             getLogger().info("Low on memory. Waiting 10 seconds...");
             tickCooldown = 200;
-            getLogger().info("Garbage collecting...");
-            Runtime.getRuntime().gc();
-            getLogger().info("Done");
+            collectGarbage();
             return;
         }
         if (world == null && worldName == null) return;
@@ -285,9 +283,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                     saveTodo();
                     getLogger().info("Saving world...");
                     world.save();
-                    getLogger().info("Garbage collecting...");
-                    Runtime.getRuntime().gc();
-                    getLogger().info("Done");
+                    collectGarbage();
                 }
             }
         }
@@ -327,6 +323,12 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         int done = total - todo.size();
         int percent = done * 100 / total;
         getLogger().info(String.format("%d/%d Chunks done (%d%%)", done, total, percent));
+    }
+
+    void collectGarbage() {
+        getLogger().info("" + (Runtime.getRuntime().freeMemory() / 1024 / 1024) + " MiB free. Collecing garbage..." );
+        Runtime.getRuntime().gc();
+        getLogger().info("" + (Runtime.getRuntime().freeMemory() / 1024 / 1024) + " MiB free. Done." );
     }
 
     // --- MCProtocolLib stuff
