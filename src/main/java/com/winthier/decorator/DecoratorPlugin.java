@@ -276,10 +276,12 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             player.setAllowFlight(true);
             player.setFlying(true);
             player.teleport(location);
-            if (todo.size() % 10000 == 0) {
+            if (todo.size() % 1000 == 0) {
                 printTodoProgressReport();
-                saveTodo();
-                world.save();
+                if (todo.size() % 10000 == 0) {
+                    saveTodo();
+                    world.save();
+                }
             }
         }
     }
