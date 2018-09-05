@@ -227,7 +227,9 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         if (Runtime.getRuntime().freeMemory() < (long)(1024 * 1024 * memoryThreshold)) {
             getLogger().info("Low on memory. Waiting 10 seconds...");
             tickCooldown = 200;
+            getLogger().info("Garbage collecting...");
             Runtime.getRuntime().gc();
+            getLogger().info("Done");
             return;
         }
         if (world == null && worldName == null) return;
@@ -279,8 +281,13 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             if (todo.size() % 1000 == 0) {
                 printTodoProgressReport();
                 if (todo.size() % 10000 == 0) {
+                    getLogger().info("Saving todo...");
                     saveTodo();
+                    getLogger().info("Saving world...");
                     world.save();
+                    getLogger().info("Garbage collecting...");
+                    Runtime.getRuntime().gc();
+                    getLogger().info("Done");
                 }
             }
         }
