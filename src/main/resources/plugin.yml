@@ -1,5 +1,5 @@
 name: Decorator
-description: Teleport player around the world to decorate chunks
+description: Populate world chunks by teleporting players around.
 author: StarTux
 version: 0.1
 api-version: 1.13
