@@ -44,7 +44,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     private boolean paused, debug;
     private boolean allChunks;
     private final Map<UUID, Vec> anchors = new HashMap<>();
-    private final Map<UUID, Integer> populateDidHappen = new HashMap<>();
+    private final Map<UUID, Integer> playerPopulateCooldown = new HashMap<>();
     private World world;
     private String worldName;
     private int interval, playerPopulateInterval;
@@ -342,13 +342,13 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 world.save();
                 Runtime.getRuntime().gc();
             }
-            Integer popCooldown = populateDidHappen.get(player.getUniqueId());
+            Integer popCooldown = playerPopulateCooldown.get(player.getUniqueId());
             if (popCooldown != null) {
                 popCooldown -= interval;
                 if (popCooldown <= 0) {
-                    populateDidHappen.remove(player.getUniqueId());
+                    playerPopulateCooldown.remove(player.getUniqueId());
                 } else {
-                    populateDidHappen.put(player.getUniqueId(), popCooldown);
+                    playerPopulateCooldown.put(player.getUniqueId(), popCooldown);
                 }
                 return;
             }
@@ -385,6 +385,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             player.setAllowFlight(true);
             player.setFlying(true);
             player.teleport(location);
+            playerPopulateCooldown.put(player.getUniqueId(), playerPopulateInterval);
             done += 1;
             if (done % 10000 == 0) {
                 printTodoProgressReport();
@@ -411,7 +412,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 minDist = dist;
             }
         }
-        if (causingPlayer != null) populateDidHappen.put(causingPlayer.getUniqueId(), playerPopulateInterval);
+        if (causingPlayer != null) playerPopulateCooldown.put(causingPlayer.getUniqueId(), playerPopulateInterval);
         if (debug) {
             String playerName = causingPlayer == null ? "Unknown" : causingPlayer.getName();
             getLogger().info("POPULATE " + vec.x + " " + vec.z + " " + playerName);
