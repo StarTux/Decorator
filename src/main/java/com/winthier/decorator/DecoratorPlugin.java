@@ -263,8 +263,8 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         }
         tickCooldown = interval;
         if (Runtime.getRuntime().freeMemory() < (long)(1024 * 1024 * memoryThreshold)) {
-            getLogger().info("Low on memory. Waiting 10 seconds...");
-            tickCooldown = 200;
+            getLogger().info("Low on memory. Waiting 30 seconds...");
+            tickCooldown = 600;
             collectGarbage();
             return;
         }
