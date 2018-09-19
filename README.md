@@ -21,8 +21,8 @@ All players on the server will be put in creative mode and teleported around.  P
 
 ## Commands
 There is a set of commands to control the chunk population effort, as well as some debugging helpers.
-- `/dec init <world> (all)` - Initialize the decorator and start generating.
-- `/dec reload` - Reload all configurations, including progression state.
+- `/dec init <world> (all)` - Initialize the decorator and start generating.  The all option generates all chunks, not just missing ones.
+- `/dec reload` - Reload the configuration file.
 - `/dec pause` - Pause generation.
 - `/dec save` - Save the world and progression state.
 - `/dec cancel` - Cancel the currently ongoing decoration attempt.
