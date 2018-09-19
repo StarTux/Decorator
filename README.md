@@ -1,5 +1,5 @@
 # Decorator
-*Populate world chunks fully by warping (fake) players around*
+*Populate world chunks fully by teleporting (fake) players around.*
 
 ## Links
 - [Source code](https://github.com/StarTux/Decorator) on Github
