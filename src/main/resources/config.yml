@@ -1,3 +1,5 @@
 interval: 4
 fake-players: 5
 memory-threshold: 128 # In MiB
+memory-wait-time: 30 # In seconds
+player-populate-interval: 20 # In ticks

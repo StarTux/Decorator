@@ -44,13 +44,13 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     private boolean paused, debug;
     private boolean allChunks;
     private final Map<UUID, Vec> anchors = new HashMap<>();
-    private final Set<UUID> populateDidHappen = new HashSet<>();
+    private final Map<UUID, Integer> populateDidHappen = new HashMap<>();
     private World world;
     private String worldName;
-    private int interval;
+    private int interval, playerPopulateInterval;
     private int fakePlayers, fakeCount = (int)System.nanoTime() % 10000, fakeCooldown;
     private int tickCooldown;
-    private int memoryThreshold;
+    private int memoryThreshold, memoryWaitTime;
 
     @Value
     final class Vec {
@@ -69,10 +69,15 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         reloadConfig();
         saveDefaultConfig();
         interval = getConfig().getInt("interval");
+        playerPopulateInterval = getConfig().getInt("player-populate-interval");
         fakePlayers = getConfig().getInt("fake-players");
         memoryThreshold = getConfig().getInt("memory-threshold");
-        getLogger().info("Interval: " + interval);
+        memoryWaitTime = getConfig().getInt("memory-wait-time");
+        getLogger().info("Interval: " + interval + " ticks");
+        getLogger().info("Player Populate Interval: " + playerPopulateInterval + " ticks");
         getLogger().info("Fake Players: " + fakePlayers);
+        getLogger().info("Memory Threshold: " + memoryThreshold + " MiB");
+        getLogger().info("Memory Wait Time: " + memoryWaitTime + " seconds");
     }
 
     @Override
@@ -263,8 +268,8 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         }
         tickCooldown = interval;
         if (Runtime.getRuntime().freeMemory() < (long)(1024 * 1024 * memoryThreshold)) {
-            getLogger().info("Low on memory. Waiting 30 seconds...");
-            tickCooldown = 600;
+            getLogger().info("Low on memory. Waiting " + memoryWaitTime + " seconds...");
+            tickCooldown = 20 * memoryWaitTime;
             collectGarbage();
             return;
         }
@@ -337,7 +342,16 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 world.save();
                 Runtime.getRuntime().gc();
             }
-            if (populateDidHappen.remove(player.getUniqueId())) continue;
+            Integer popCooldown = populateDidHappen.get(player.getUniqueId());
+            if (popCooldown != null) {
+                popCooldown -= interval;
+                if (popCooldown <= 0) {
+                    populateDidHappen.remove(player.getUniqueId());
+                } else {
+                    populateDidHappen.put(player.getUniqueId(), popCooldown);
+                }
+                return;
+            }
             Vec anchor = anchors.get(player.getUniqueId());
             if (anchor == null) {
                 Chunk chunk = player.getLocation().getChunk();
@@ -397,7 +411,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 minDist = dist;
             }
         }
-        if (causingPlayer != null) populateDidHappen.add(causingPlayer.getUniqueId());
+        if (causingPlayer != null) populateDidHappen.put(causingPlayer.getUniqueId(), playerPopulateInterval);
         if (debug) {
             String playerName = causingPlayer == null ? "Unknown" : causingPlayer.getName();
             getLogger().info("POPULATE " + vec.x + " " + vec.z + " " + playerName);
@@ -413,7 +427,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     void printTodoProgressReport() {
         int d = total - regions.size();
         int percent = total > 0 ? d * 100 / total : 0;
-        getLogger().info(String.format("%d/%d Chunks done (%d%%), %d chunks", d, total, percent, done));
+        getLogger().info(String.format("%d/%d Regions done (%d%%), %d chunks", d, total, percent, done));
     }
 
     void collectGarbage() {
