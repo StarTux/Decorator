@@ -11,6 +11,8 @@ import com.github.steveice10.packetlib.event.session.PacketReceivedEvent;
 import com.github.steveice10.packetlib.event.session.SessionAdapter;
 import com.github.steveice10.packetlib.tcp.TcpSessionFactory;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.Proxy;
 import java.util.ArrayList;
@@ -36,9 +38,11 @@ import org.bukkit.event.world.ChunkPopulateEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class DecoratorPlugin extends JavaPlugin implements Listener {
-    private Set<Vec> todo;
-    private int total;
+    private Set<Vec> chunks, regions;
+    private Vec currentRegion;
+    private int total, done;
     private boolean paused, debug;
+    private boolean allChunks;
     private final Map<UUID, Vec> anchors = new HashMap<>();
     private final Set<UUID> populateDidHappen = new HashSet<>();
     private World world;
@@ -50,7 +54,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
 
     @Value
     final class Vec {
-        private final int x, z;
+        public final int x, z;
     }
 
     @Override
@@ -85,7 +89,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         }
         switch (cmd) {
         case "init":
-            if (args.length == 1 || args.length == 2) {
+            if (args.length >= 1 && args.length <= 3) {
                 if (args.length >= 2) {
                     world = getServer().getWorld(args[1]);
                     worldName = world.getName();
@@ -98,16 +102,23 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                     sender.sendMessage("World border too large!");
                     return true;
                 }
+                allChunks = args.length >= 3 && args[2].equals("all");
                 Chunk min = world.getWorldBorder().getCenter().add(-radius, 0, -radius).getChunk();
                 Chunk max = world.getWorldBorder().getCenter().add(radius, 0, radius).getChunk();
-                todo = new HashSet<>();
-                for (int z = min.getZ() + 1; z < max.getZ(); z += 1) {
-                    for (int x = min.getX() + 1; x < max.getX(); x += 1) {
-                        todo.add(new Vec(x, z));
+                regions = new HashSet<>();
+                int minX = min.getX() >> 5;
+                int minZ = min.getZ() >> 5;
+                int maxX = max.getX() >> 5;
+                int maxZ = max.getZ() >> 5;
+                for (int z = minZ + 1; z <= maxZ; z += 1) {
+                    for (int x = minX; x <= maxX; x += 1) {
+                        regions.add(new Vec(x, z));
                     }
                 }
-                total = todo.size();
-                sender.sendMessage("" + todo.size() + " chunks scheduled.");
+                chunks = new HashSet<>();
+                total = regions.size();
+                done = 0;
+                sender.sendMessage("" + total + " regions scheduled.");
                 return true;
             }
             break;
@@ -142,20 +153,25 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             break;
         case "cancel":
             if (args.length == 1) {
-                todo = null;
+                regions = null;
+                chunks = null;
+                total = 0;
+                done = 0;
+                world = null;
                 saveTodo();
-                sender.sendMessage("Canceled");
+                sender.sendMessage("Cancelled");
                 return true;
             }
             break;
         case "info":
             if (args.length == 1) {
-                if (todo == null) {
+                if (chunks == null || regions == null) {
                     sender.sendMessage("Not active");
                 } else {
-                    int done = total - todo.size();
-                    int percent = done * 100 / total;
-                    sender.sendMessage(String.format("%d/%d Chunks done (%d%%)", done, total, percent));
+                    int d = total - regions.size();
+                    int percent = total > 0 ? d * 100 / total : 0;
+                    sender.sendMessage(String.format("%d/%d Regions done (%d%%), %d chunks. All chunks=%s.", d, total, percent, done, allChunks));
+                    if (currentRegion != null) sender.sendMessage(String.format("Current region: %d,%d with %d chunks", currentRegion.x, currentRegion.z, chunks.size()));
                 }
                 sender.sendMessage("Free: " + (Runtime.getRuntime().freeMemory() / 1024 / 1024) + " MiB");
                 if (paused) sender.sendMessage("Paused");
@@ -184,31 +200,53 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     }
 
     void loadTodo() {
-        getLogger().info("Loading todos. This may take a while...");
-        todo = null;
         YamlConfiguration config = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "todo.yml"));
-        if (!config.isSet("todo")) return;
-        todo = new HashSet<>();
-        Iterator<Integer> iter = config.getIntegerList("todo").iterator();
-        while (iter.hasNext()) {
-            todo.add(new Vec(iter.next(), iter.next()));
+        regions = null;
+        if (config.isSet("regions")) {
+            regions = new HashSet<>();
+            Iterator<Integer> iter = config.getIntegerList("regions").iterator();
+            while (iter.hasNext()) {
+                regions.add(new Vec(iter.next(), iter.next()));
+            }
+        }
+        chunks = null;
+        if (config.isSet("chunks")) {
+            chunks = new HashSet<>();
+            Iterator<Integer> iter = config.getIntegerList("chunks").iterator();
+            while (iter.hasNext()) {
+                chunks.add(new Vec(iter.next(), iter.next()));
+            }
         }
         worldName = config.getString("world");
         total = config.getInt("total");
-        getLogger().info("..." + todo.size() + " todos loaded");
+        done = config.getInt("done");
+        allChunks = config.getBoolean("all");
+        if (chunks != null && regions != null) {
+            getLogger().info("" + regions.size() + " regions and " + chunks.size() + " chunks loaded");
+        }
     }
 
     void saveTodo() {
         YamlConfiguration config = new YamlConfiguration();
-        if (todo != null) {
-            config.set("world", world.getName());
-            config.set("total", total);
+        config.set("world", worldName);
+        config.set("total", total);
+        config.set("done", done);
+        config.set("all", allChunks);
+        if (chunks != null) {
             ArrayList<Integer> ls = new ArrayList<>();
-            for (Vec vec: todo) {
+            for (Vec vec: chunks) {
                 ls.add(vec.x);
                 ls.add(vec.z);
             }
-            config.set("todo", ls);
+            config.set("chunks", ls);
+        }
+        if (regions != null) {
+            ArrayList<Integer> ls = new ArrayList<>();
+            for (Vec vec: regions) {
+                ls.add(vec.x);
+                ls.add(vec.z);
+            }
+            config.set("regions", ls);
         }
         try {
             config.save(new File(getDataFolder(), "todo.yml"));
@@ -218,7 +256,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     }
 
     void onTick() {
-        if (paused || todo == null) return;
+        if (paused || regions == null || chunks == null) return;
         if (tickCooldown > 0) {
             tickCooldown -= 1;
             return;
@@ -232,16 +270,71 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         }
         if (world == null && worldName == null) return;
         if (world == null) world = getServer().getWorld(worldName);
+        if (world == null) return;
         if (fakeCooldown <= 0 && getServer().getOnlinePlayers().size() < fakePlayers) {
             spawnFakePlayer("fake" + fakeCount++);
             fakeCooldown = 20;
         }
         if (fakeCooldown > 0) fakeCooldown -= 1;
         for (Player player: getServer().getOnlinePlayers()) {
-            if (todo.isEmpty()) {
-                todo = null;
-                getLogger().info("Done!");
-                return;
+            // Fetch new chunks if necessary.
+            while (chunks.isEmpty()) {
+                if (regions.isEmpty()) {
+                    regions = null;
+                    chunks = null;
+                    getLogger().info("Done!");
+                    return;
+                }
+                Vec nextRegion = null;
+                for (Vec vec: regions) {
+                    if (nextRegion == null
+                        || (Math.abs(vec.x) < Math.abs(nextRegion.x)
+                            && Math.abs(vec.z) < Math.abs(nextRegion.z))) {
+                        nextRegion = vec;
+                    }
+                }
+                String filename = "r." + nextRegion.x + "." + nextRegion.z + ".mca";
+                File file = new File(world.getWorldFolder(), "region");
+                file = new File(file, filename);
+                int minX = nextRegion.x * 32;
+                int minZ = nextRegion.z * 32;
+                if (allChunks || !file.exists()) {
+                    for (int z = 0; z < 32; z += 1) {
+                        for (int x = 0; x < 32; x += 1) {
+                            chunks.add(new Vec(minX + x, minZ + z));
+                        }
+                    }
+                } else {
+                    try {
+                        FileInputStream fis = new FileInputStream(file);
+                        for (int z = 0; z < 32; z += 1) {
+                            for (int x = 0; x < 32; x += 1) {
+                                int o1 = fis.read();
+                                int o2 = fis.read();
+                                int o3 = fis.read();
+                                int sc = fis.read();
+                                if (o1 == 0 && o2 == 0 && o3 == 0 && sc == 0) {
+                                    chunks.add(new Vec(minX + x, minZ + z));
+                                }
+                            }
+                        }
+                        fis.close();
+                    } catch (FileNotFoundException nfne) {
+                        System.err.println("File not found: " + file);
+                        nfne.printStackTrace();
+                        paused = true;
+                        return;
+                    } catch (IOException ioe) {
+                        System.err.println("Exception reading " + file + ":");
+                        ioe.printStackTrace();
+                        paused = true;
+                        return;
+                    }
+                }
+                regions.remove(nextRegion);
+                getLogger().info("New region: " + filename + ", " + chunks.size() + " chunks. Saving todo and " + world.getName() + ".");
+                saveTodo();
+                world.save();
             }
             if (populateDidHappen.remove(player.getUniqueId())) continue;
             Vec anchor = anchors.get(player.getUniqueId());
@@ -254,7 +347,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             int chunkZ = anchor.z;
             Vec nextVec = null;
             int minDist = 0;
-            for (Vec vec: todo) {
+            for (Vec vec: chunks) {
                 int dist = Math.max(Math.abs(vec.x - chunkX), Math.abs(vec.z - chunkZ));
                 if (nextVec == null || minDist > dist) {
                     nextVec = vec;
@@ -264,7 +357,8 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             if (minDist > 4) {
                 anchors.put(player.getUniqueId(), nextVec);
             }
-            todo.remove(nextVec);
+            chunks.remove(nextVec);
+            currentRegion = nextVec;
             int x = nextVec.x * 16 + 8;
             int z = nextVec.z * 16 + 8;
             Location location = world.getHighestBlockAt(x, z).getLocation().add(0.5, 0.1, 0.5);
@@ -276,33 +370,28 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             player.setAllowFlight(true);
             player.setFlying(true);
             player.teleport(location);
-            if (todo.size() % 1000 == 0) {
+            done += 1;
+            if (done % 10000 == 0) {
                 printTodoProgressReport();
-                if (todo.size() % 10000 == 0) {
-                    getLogger().info("Saving todo...");
-                    saveTodo();
-                    getLogger().info("Saving world...");
-                    world.save();
-                    collectGarbage();
-                }
+                collectGarbage();
             }
         }
     }
 
     @EventHandler
     public void onChunkPopulate(ChunkPopulateEvent event) {
-        if (todo == null) return;
+        if (regions == null || chunks == null) return;
         if (world == null && worldName == null) return;
         if (world == null) world = getServer().getWorld(worldName);
         if (!world.equals(event.getWorld())) return;
         Vec vec = new Vec(event.getChunk().getX(), event.getChunk().getZ());
-        if (!todo.remove(vec)) return;
+        if (!chunks.remove(vec)) return;
         Player causingPlayer = null;
         int minDist = 0;
         for (Player player: world.getPlayers()) {
             Chunk chunk = player.getLocation().getChunk();
             int dist = Math.max(Math.abs(vec.x - chunk.getX()), Math.abs(vec.z - chunk.getZ()));
-            if (causingPlayer == null || dist < minDist) {
+            if (dist < 5 && (causingPlayer == null || dist < minDist)) {
                 causingPlayer = player;
                 minDist = dist;
             }
@@ -312,7 +401,8 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             String playerName = causingPlayer == null ? "Unknown" : causingPlayer.getName();
             getLogger().info("POPULATE " + vec.x + " " + vec.z + " " + playerName);
         }
-        if (todo.size() % 10000 == 0) {
+        done += 1;
+        if (done % 10000 == 0) {
             printTodoProgressReport();
             saveTodo();
             world.save();
@@ -320,15 +410,15 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     }
 
     void printTodoProgressReport() {
-        int done = total - todo.size();
-        int percent = done * 100 / total;
-        getLogger().info(String.format("%d/%d Chunks done (%d%%)", done, total, percent));
+        int d = total - regions.size();
+        int percent = total > 0 ? d * 100 / total : 0;
+        getLogger().info(String.format("%d/%d Chunks done (%d%%), %d chunks", d, total, percent, done));
     }
 
     void collectGarbage() {
         getLogger().info("" + (Runtime.getRuntime().freeMemory() / 1024 / 1024) + " MiB free. Collecing garbage..." );
         Runtime.getRuntime().gc();
-        getLogger().info("" + (Runtime.getRuntime().freeMemory() / 1024 / 1024) + " MiB free. Done." );
+        getLogger().info("" + (Runtime.getRuntime().freeMemory() / 1024 / 1024) + " MiB free." );
     }
 
     // --- MCProtocolLib stuff
