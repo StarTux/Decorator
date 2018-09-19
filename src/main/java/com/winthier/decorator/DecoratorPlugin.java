@@ -344,13 +344,13 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             }
             Integer popCooldown = playerPopulateCooldown.get(player.getUniqueId());
             if (popCooldown != null) {
-                popCooldown -= interval;
+                popCooldown -= Math.max(1, interval);
                 if (popCooldown <= 0) {
                     playerPopulateCooldown.remove(player.getUniqueId());
                 } else {
                     playerPopulateCooldown.put(player.getUniqueId(), popCooldown);
                 }
-                return;
+                continue;
             }
             Vec anchor = anchors.get(player.getUniqueId());
             if (anchor == null) {
