@@ -313,7 +313,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                                 int o2 = fis.read();
                                 int o3 = fis.read();
                                 int sc = fis.read();
-                                if (o1 == 0 && o2 == 0 && o3 == 0 && sc == 0) {
+                                if ((o1 == 0 && o2 == 0 && o3 == 0) || sc == 0) {
                                     chunks.add(new Vec(minX + x, minZ + z));
                                 }
                             }
@@ -335,6 +335,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 getLogger().info("New region: " + filename + ", " + chunks.size() + " chunks. Saving todo and " + world.getName() + ".");
                 saveTodo();
                 world.save();
+                Runtime.getRuntime().gc();
             }
             if (populateDidHappen.remove(player.getUniqueId())) continue;
             Vec anchor = anchors.get(player.getUniqueId());
