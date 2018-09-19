@@ -32,3 +32,7 @@ There is a set of commands to control the chunk population effort, as well as so
 ## Permissions
 There is only one permission node for this plugin.
 - `decorator.decorator` - Use /dec
+
+
+## Credits
+This plugin utilizes Steveice10's excellent library [MCProtocolLib](https://github.com/Steveice10/MCProtocolLib) to spawn in fake players.  The class files are shaded into the plugin jar.
