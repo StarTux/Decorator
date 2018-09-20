@@ -186,7 +186,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 } else {
                     int d = total - regions.size();
                     int percent = total > 0 ? d * 100 / total : 0;
-                    sender.sendMessage("World=" + worldName + " AllChunks=" + allChunks + " Bounds=(" + lboundx + "," + uboundx + ")-(" + lboundz + "," + uboundz + ")");
+                    sender.sendMessage("World=" + worldName + " AllChunks=" + allChunks + " Bounds=(" + lboundx + "," + lboundz + ")-(" + uboundx + "," + uboundz + ")");
                     sender.sendMessage(String.format("%d/%d Regions done (%d%%), %d chunks.", d, total, percent, done));
                     if (tickCooldown > 0) sender.sendMessage("TickCooldown=" + tickCooldown);
                     if (currentRegion != null) sender.sendMessage(String.format("Current region: %d,%d with %d chunks", currentRegion.x, currentRegion.z, chunks.size()));
@@ -329,7 +329,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             while (chunks.isEmpty()) {
                 if (System.nanoTime() - now > 1000000000) {
                     getLogger().info("Many fully generated regions in a row. Skipping tick.");
-                    break;
+                    return;
                 }
                 if (regions.isEmpty()) {
                     regions = null;
@@ -407,7 +407,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 world.save();
                 Runtime.getRuntime().gc();
             }
-            if (chunks.isEmpty()) continue;
+            if (chunks.isEmpty()) return;
             Integer popCooldown = playerPopulateCooldown.get(player.getUniqueId());
             if (popCooldown != null) {
                 popCooldown -= Math.max(1, interval);
