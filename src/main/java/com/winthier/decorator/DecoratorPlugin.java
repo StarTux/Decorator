@@ -192,7 +192,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                     if (tickCooldown > 0) sender.sendMessage("TickCooldown=" + tickCooldown);
                     if (currentRegion != null) sender.sendMessage(String.format("Current region: %d,%d with %d chunks", currentRegion.x, currentRegion.z, chunks.size()));
                 }
-                sender.sendMessage("Free: " + (Runtime.getRuntime().freeMemory() / 1024 / 1024) + " MiB");
+                sender.sendMessage("Free: " + (freeMem() / 1024 / 1024) + " MiB");
                 if (paused) sender.sendMessage("Paused");
                 return true;
             }
@@ -303,6 +303,11 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         }
     }
 
+    long freeMem() {
+        Runtime rt = Runtime.getRuntime();
+        return rt.freeMemory() + rt.totalMemory() - rt.maxMemory();
+    }
+
     void onTick() {
         if (paused || regions == null || chunks == null) return;
         if (tickCooldown > 0) {
@@ -310,7 +315,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             return;
         }
         tickCooldown = interval;
-        if (Runtime.getRuntime().freeMemory() < (long)(1024 * 1024 * memoryThreshold)) {
+        if (freeMem() < (long)(1024 * 1024 * memoryThreshold)) {
             getLogger().info("Low on memory. Waiting " + memoryWaitTime + " seconds...");
             tickCooldown = 20 * memoryWaitTime;
             collectGarbage();
@@ -325,95 +330,96 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         }
         if (fakeCooldown > 0) fakeCooldown -= 1;
         long now = System.nanoTime();
-        for (Player player: getServer().getOnlinePlayers()) {
-            // Fetch new chunks if necessary.
-            while (chunks.isEmpty()) {
-                if (System.nanoTime() - now > 1000000000) {
-                    return;
+        // Fetch new chunks if necessary.
+        while (chunks.isEmpty()) {
+            if (System.nanoTime() - now > 1000000000) {
+                return;
+            }
+            if (previousChunks > 0) {
+                previousChunks = 0;
+                world.save();
+                Runtime.getRuntime().gc();
+            }
+            if (regions.isEmpty()) {
+                regions = null;
+                chunks = null;
+                getLogger().info("Done!");
+                return;
+            }
+            Vec nextRegion = null;
+            for (Vec vec: regions) {
+                if (nextRegion == null
+                    || (Math.abs(vec.x) < Math.abs(nextRegion.x)
+                        && Math.abs(vec.z) < Math.abs(nextRegion.z))) {
+                    nextRegion = vec;
                 }
-                if (previousChunks > 0) {
-                    previousChunks = 0;
-                    world.save();
-                    Runtime.getRuntime().gc();
-                }
-                if (regions.isEmpty()) {
-                    regions = null;
-                    chunks = null;
-                    getLogger().info("Done!");
-                    return;
-                }
-                Vec nextRegion = null;
-                for (Vec vec: regions) {
-                    if (nextRegion == null
-                        || (Math.abs(vec.x) < Math.abs(nextRegion.x)
-                            && Math.abs(vec.z) < Math.abs(nextRegion.z))) {
-                        nextRegion = vec;
+            }
+            String filename = "r." + nextRegion.x + "." + nextRegion.z + ".mca";
+            File file = world.getWorldFolder();
+            switch (world.getEnvironment()) {
+            case NETHER:
+                file = new File(file, "DIM-1");
+                break;
+            case THE_END:
+                file = new File(file, "DIM1");
+                break;
+            default:
+                break;
+            }
+            file = new File(file, "region");
+            file = new File(file, filename);
+            int minX = nextRegion.x * 32;
+            int minZ = nextRegion.z * 32;
+            if (allChunks || !file.exists()) {
+                for (int z = 0; z < 32; z += 1) {
+                    for (int x = 0; x < 32; x += 1) {
+                        int cx = minX + x;
+                        int cz = minZ + z;
+                        if (cx < lboundx || cx > uboundx || cz < lboundz || cz > uboundz) continue;
+                        chunks.add(new Vec(cx, cz));
                     }
                 }
-                String filename = "r." + nextRegion.x + "." + nextRegion.z + ".mca";
-                File file = world.getWorldFolder();
-                switch (world.getEnvironment()) {
-                case NETHER:
-                    file = new File(file, "DIM-1");
-                    break;
-                case THE_END:
-                    file = new File(file, "DIM1");
-                    break;
-                default:
-                    break;
-                }
-                file = new File(file, "region");
-                file = new File(file, filename);
-                int minX = nextRegion.x * 32;
-                int minZ = nextRegion.z * 32;
-                if (allChunks || !file.exists()) {
+            } else {
+                try {
+                    FileInputStream fis = new FileInputStream(file);
                     for (int z = 0; z < 32; z += 1) {
                         for (int x = 0; x < 32; x += 1) {
                             int cx = minX + x;
                             int cz = minZ + z;
                             if (cx < lboundx || cx > uboundx || cz < lboundz || cz > uboundz) continue;
-                            chunks.add(new Vec(cx, cz));
-                        }
-                    }
-                } else {
-                    try {
-                        FileInputStream fis = new FileInputStream(file);
-                        for (int z = 0; z < 32; z += 1) {
-                            for (int x = 0; x < 32; x += 1) {
-                                int cx = minX + x;
-                                int cz = minZ + z;
-                                if (cx < lboundx || cx > uboundx || cz < lboundz || cz > uboundz) continue;
-                                int o1 = fis.read();
-                                int o2 = fis.read();
-                                int o3 = fis.read();
-                                int sc = fis.read();
-                                if ((o1 == 0 && o2 == 0 && o3 == 0) || sc == 0) {
-                                    chunks.add(new Vec(cx, cz));
-                                }
+                            int o1 = fis.read();
+                            int o2 = fis.read();
+                            int o3 = fis.read();
+                            int sc = fis.read();
+                            if ((o1 == 0 && o2 == 0 && o3 == 0) || sc == 0) {
+                                chunks.add(new Vec(cx, cz));
                             }
                         }
-                        fis.close();
-                    } catch (FileNotFoundException nfne) {
-                        System.err.println("File not found: " + file);
-                        nfne.printStackTrace();
-                        paused = true;
-                        return;
-                    } catch (IOException ioe) {
-                        System.err.println("Exception reading " + file + ":");
-                        ioe.printStackTrace();
-                        paused = true;
-                        return;
                     }
+                    fis.close();
+                } catch (FileNotFoundException nfne) {
+                    System.err.println("File not found: " + file);
+                    nfne.printStackTrace();
+                    paused = true;
+                    return;
+                } catch (IOException ioe) {
+                    System.err.println("Exception reading " + file + ":");
+                    ioe.printStackTrace();
+                    paused = true;
+                    return;
                 }
-                regions.remove(nextRegion);
-                currentRegion = nextRegion;
-                if (chunks.size() > 0) {
-                    getLogger().info("New region: " + filename + ", " + chunks.size() + " chunks.");
-                    previousChunks = chunks.size();
-                }
-                saveTodo();
             }
-            if (chunks.isEmpty()) return;
+            regions.remove(nextRegion);
+            currentRegion = nextRegion;
+            if (chunks.size() > 0) {
+                getLogger().info("New region: " + filename + ", " + chunks.size() + " chunks.");
+                previousChunks = chunks.size();
+            }
+            saveTodo();
+        }
+        if (chunks.isEmpty()) return;
+        for (Player player: getServer().getOnlinePlayers()) {
+            if (chunks.isEmpty()) break;
             Integer popCooldown = playerPopulateCooldown.get(player.getUniqueId());
             if (popCooldown != null) {
                 popCooldown -= Math.max(1, interval);
@@ -500,9 +506,9 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     }
 
     void collectGarbage() {
-        getLogger().info("" + (Runtime.getRuntime().freeMemory() / 1024 / 1024) + " MiB free. Collecing garbage...");
+        getLogger().info("" + (freeMem() / 1024 / 1024) + " MiB free. Collecing garbage...");
         Runtime.getRuntime().gc();
-        getLogger().info("" + (Runtime.getRuntime().freeMemory() / 1024 / 1024) + " MiB free.");
+        getLogger().info("" + (freeMem() / 1024 / 1024) + " MiB free.");
     }
 
     // --- MCProtocolLib stuff
