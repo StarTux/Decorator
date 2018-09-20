@@ -356,6 +356,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             Vec nextRegion = null;
             for (Vec vec: regions) {
                 if (nextRegion == null
+                    || (currentRegion != null && Math.max(Math.abs(currentRegion.x - vec.x), Math.abs(currentRegion.z - vec.z)) < Math.max(Math.abs(currentRegion.x - nextRegion.x), Math.abs(currentRegion.z - nextRegion.z)))
                     || (Math.abs(vec.x) < Math.abs(nextRegion.x)
                         && Math.abs(vec.z) < Math.abs(nextRegion.z))) {
                     nextRegion = vec;
