@@ -56,7 +56,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     private int lboundx, lboundz, uboundx, uboundz;
     // Non-persistent state
     private World world;
-    private transient Vec currentRegion;
+    private transient Vec currentRegion = new Vec(0, 0), pivotRegion = new Vec(0, 0);
     private final Map<UUID, Vec> anchors = new HashMap<>();
     private int fakeCount = (int)System.nanoTime() % 10000, fakeCooldown;
     private int previousChunks = 0;
@@ -356,9 +356,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             Vec nextRegion = null;
             for (Vec vec: regions) {
                 if (nextRegion == null
-                    || (currentRegion != null && Math.max(Math.abs(currentRegion.x - vec.x), Math.abs(currentRegion.z - vec.z)) < Math.max(Math.abs(currentRegion.x - nextRegion.x), Math.abs(currentRegion.z - nextRegion.z)))
-                    || (Math.abs(vec.x) < Math.abs(nextRegion.x)
-                        && Math.abs(vec.z) < Math.abs(nextRegion.z))) {
+                    || (Math.max(Math.abs(pivotRegion.x - vec.x), Math.abs(pivotRegion.z - vec.z)) < Math.max(Math.abs(pivotRegion.x - nextRegion.x), Math.abs(pivotRegion.z - nextRegion.z)))) {
                     nextRegion = vec;
                 }
             }
@@ -418,6 +416,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 }
             }
             regions.remove(nextRegion);
+            if (Math.max(currentRegion.x - pivotRegion.x, currentRegion.z - pivotRegion.z) > 4) pivotRegion = currentRegion;
             currentRegion = nextRegion;
             if (chunks.size() > 0) {
                 getLogger().info("New region: " + filename + ", " + chunks.size() + " chunks.");
