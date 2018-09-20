@@ -41,7 +41,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public final class DecoratorPlugin extends JavaPlugin implements Listener {
     // Configuration values (config.yml)
-    private int interval, playerPopulateInterval;
+    private int playerPopulateInterval;
     private int memoryThreshold, memoryWaitTime;
     private int fakePlayers;
     // State information (todo.yml)
@@ -76,12 +76,10 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     void importConfig() {
         reloadConfig();
         saveDefaultConfig();
-        interval = getConfig().getInt("interval");
         playerPopulateInterval = getConfig().getInt("player-populate-interval");
         fakePlayers = getConfig().getInt("fake-players");
         memoryThreshold = getConfig().getInt("memory-threshold");
         memoryWaitTime = getConfig().getInt("memory-wait-time");
-        getLogger().info("Interval: " + interval + " ticks");
         getLogger().info("Player Populate Interval: " + playerPopulateInterval + " ticks");
         getLogger().info("Fake Players: " + fakePlayers);
         getLogger().info("Memory Threshold: " + memoryThreshold + " MiB");
@@ -314,7 +312,6 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             tickCooldown -= 1;
             return;
         }
-        tickCooldown = interval;
         if (freeMem() < (long)(1024 * 1024 * memoryThreshold)) {
             getLogger().info("Low on memory. Waiting " + memoryWaitTime + " seconds...");
             tickCooldown = 20 * memoryWaitTime;
@@ -422,7 +419,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             if (chunks.isEmpty()) break;
             Integer popCooldown = playerPopulateCooldown.get(player.getUniqueId());
             if (popCooldown != null) {
-                popCooldown -= Math.max(1, interval);
+                popCooldown -= 1;
                 if (popCooldown <= 0) {
                     playerPopulateCooldown.remove(player.getUniqueId());
                 } else {
