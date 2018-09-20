@@ -58,6 +58,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     private transient Vec currentRegion;
     private final Map<UUID, Vec> anchors = new HashMap<>();
     private int fakeCount = (int)System.nanoTime() % 10000, fakeCooldown;
+    private int previousChunks = 0;
 
     @Value
     final class Vec {
@@ -328,8 +329,12 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             // Fetch new chunks if necessary.
             while (chunks.isEmpty()) {
                 if (System.nanoTime() - now > 1000000000) {
-                    getLogger().info("Many fully generated regions in a row. Skipping tick.");
                     return;
+                }
+                if (previousChunks > 0) {
+                    previousChunks = 0;
+                    world.save();
+                    Runtime.getRuntime().gc();
                 }
                 if (regions.isEmpty()) {
                     regions = null;
@@ -402,10 +407,11 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 }
                 regions.remove(nextRegion);
                 currentRegion = nextRegion;
-                getLogger().info("New region: " + filename + ", " + chunks.size() + " chunks. Saving todo and " + world.getName() + ".");
+                if (chunks.size() > 0) {
+                    getLogger().info("New region: " + filename + ", " + chunks.size() + " chunks.");
+                    previousChunks = chunks.size();
+                }
                 saveTodo();
-                world.save();
-                Runtime.getRuntime().gc();
             }
             if (chunks.isEmpty()) return;
             Integer popCooldown = playerPopulateCooldown.get(player.getUniqueId());
