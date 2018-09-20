@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -183,6 +184,24 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 return true;
             }
             break;
+        case "players":
+            if (args.length == 1) {
+                List<Player> ps = new ArrayList<>(getServer().getOnlinePlayers());
+                sender.sendMessage("" + ps.size() + " Players:");
+                int i = 0;
+                for (Player p: ps) {
+                    Location l = p.getLocation();
+                    Integer cooldown = playerPopulateCooldown.get(p.getUniqueId());
+                    int cd = cooldown == null ? 0 : cooldown;
+                    int x = l.getBlockX();
+                    int z = l.getBlockZ();
+                    int cx = x >> 4;
+                    int cz = z >> 4;
+                    sender.sendMessage("" + ++i + "] " + p.getName() + " loc=(" + x + "," + z + ") chunk=(" + cx + "," + cz + ") cd=" + cd);
+                }
+                return true;
+            }
+            break;
         case "save":
             if (args.length == 1) {
                 saveTodo();
@@ -283,7 +302,9 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         if (fakeCooldown > 0) fakeCooldown -= 1;
         for (Player player: getServer().getOnlinePlayers()) {
             // Fetch new chunks if necessary.
-            if (chunks.isEmpty()) {
+            long now = System.nanoTime();
+            while (chunks.isEmpty()) {
+                if (System.nanoTime() - now > 1000000000) break;
                 if (regions.isEmpty()) {
                     regions = null;
                     chunks = null;
@@ -444,9 +465,9 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     }
 
     void collectGarbage() {
-        getLogger().info("" + (Runtime.getRuntime().freeMemory() / 1024 / 1024) + " MiB free. Collecing garbage..." );
+        getLogger().info("" + (Runtime.getRuntime().freeMemory() / 1024 / 1024) + " MiB free. Collecing garbage...");
         Runtime.getRuntime().gc();
-        getLogger().info("" + (Runtime.getRuntime().freeMemory() / 1024 / 1024) + " MiB free." );
+        getLogger().info("" + (Runtime.getRuntime().freeMemory() / 1024 / 1024) + " MiB free.");
     }
 
     // --- MCProtocolLib stuff

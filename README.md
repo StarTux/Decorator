@@ -28,6 +28,7 @@ There is a set of commands to control the chunk population effort, as well as so
 - `/dec cancel` - Cancel the currently ongoing decoration attempt.
 - `/dec info` - Dump some progress info.
 - `/dec fake` - Spawn in a fake player.  This is usually not required.
+- `/dec players` - List players along with some related information.
 
 ## Permissions
 There is only one permission node for this plugin.

@@ -18,6 +18,7 @@ commands:
       /dec cancel
       /dec info
       /dec fake
+      /dec players
     permission: decorator.decorator
 permissions:
   decorator.decorator:
