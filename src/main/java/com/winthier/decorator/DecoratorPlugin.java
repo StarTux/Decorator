@@ -299,7 +299,18 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                     }
                 }
                 String filename = "r." + nextRegion.x + "." + nextRegion.z + ".mca";
-                File file = new File(world.getWorldFolder(), "region");
+                File file = world.getWorldFolder();
+                switch (world.getEnvironment()) {
+                case NETHER:
+                    file = new File(file, "DIM-1");
+                    break;
+                case THE_END:
+                    file = new File(file, "DIM1");
+                    break;
+                default:
+                    break;
+                }
+                file = new File(file, "region");
                 file = new File(file, filename);
                 int minX = nextRegion.x * 32;
                 int minZ = nextRegion.z * 32;
