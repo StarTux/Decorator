@@ -305,7 +305,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
 
     long freeMem() {
         Runtime rt = Runtime.getRuntime();
-        return rt.freeMemory() + rt.totalMemory() - rt.maxMemory();
+        return rt.freeMemory() + rt.maxMemory() - rt.totalMemory();
     }
 
     void onTick() {
