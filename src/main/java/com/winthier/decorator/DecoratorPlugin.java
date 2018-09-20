@@ -445,6 +445,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             chunks.remove(nextChunk);
             int x = nextChunk.x * 16 + 8;
             int z = nextChunk.z * 16 + 8;
+            world.loadChunk(nextChunk.x, nextChunk.z, true);
             Location location = world.getHighestBlockAt(x, z).getLocation().add(0.5, 0.1, 0.5);
             Location playerLocation = player.getLocation();
             location.setYaw(playerLocation.getYaw());
@@ -453,7 +454,6 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             player.setAllowFlight(true);
             player.setFlying(true);
             player.teleport(location);
-            playerPopulateCooldown.put(player.getUniqueId(), playerPopulateInterval);
             done += 1;
             if (done % 10000 == 0) {
                 printTodoProgressReport();
