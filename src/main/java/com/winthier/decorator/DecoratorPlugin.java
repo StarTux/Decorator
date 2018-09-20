@@ -416,7 +416,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 }
             }
             regions.remove(nextRegion);
-            if (Math.max(currentRegion.x - pivotRegion.x, currentRegion.z - pivotRegion.z) > 4) pivotRegion = currentRegion;
+            if (Math.max(Math.abs(currentRegion.x - pivotRegion.x), Math.abs(currentRegion.z - pivotRegion.z)) > 4) pivotRegion = currentRegion;
             currentRegion = nextRegion;
             if (chunks.size() > 0) {
                 getLogger().info("New region: " + filename + ", " + chunks.size() + " chunks.");
