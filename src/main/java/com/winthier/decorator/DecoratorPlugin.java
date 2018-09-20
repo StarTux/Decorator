@@ -16,6 +16,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.Proxy;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -39,19 +40,24 @@ import org.bukkit.event.world.ChunkPopulateEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class DecoratorPlugin extends JavaPlugin implements Listener {
+    // Configuration values (config.yml)
+    private int interval, playerPopulateInterval;
+    private int memoryThreshold, memoryWaitTime;
+    private int fakePlayers;
+    // State information (todo.yml)
     private Set<Vec> chunks, regions;
-    private Vec currentRegion;
     private int total, done;
     private boolean paused, debug;
     private boolean allChunks;
-    private final Map<UUID, Vec> anchors = new HashMap<>();
     private final Map<UUID, Integer> playerPopulateCooldown = new HashMap<>();
-    private World world;
     private String worldName;
-    private int interval, playerPopulateInterval;
-    private int fakePlayers, fakeCount = (int)System.nanoTime() % 10000, fakeCooldown;
     private int tickCooldown;
-    private int memoryThreshold, memoryWaitTime;
+    private int lboundx, lboundz, uboundx, uboundz;
+    // Non-persistent state
+    private World world;
+    private transient Vec currentRegion;
+    private final Map<UUID, Vec> anchors = new HashMap<>();
+    private int fakeCount = (int)System.nanoTime() % 10000, fakeCooldown;
 
     @Value
     final class Vec {
@@ -111,6 +117,10 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 allChunks = args.length >= 3 && args[2].equals("all");
                 Chunk min = world.getWorldBorder().getCenter().add(-radius, 0, -radius).getChunk();
                 Chunk max = world.getWorldBorder().getCenter().add(radius, 0, radius).getChunk();
+                lboundx = min.getX();
+                lboundz = min.getZ();
+                uboundx = max.getX();
+                uboundz = max.getZ();
                 regions = new HashSet<>();
                 int minX = min.getX() >> 5;
                 int minZ = min.getZ() >> 5;
@@ -176,7 +186,9 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 } else {
                     int d = total - regions.size();
                     int percent = total > 0 ? d * 100 / total : 0;
-                    sender.sendMessage(String.format("%d/%d Regions done (%d%%), %d chunks. All chunks=%s.", d, total, percent, done, allChunks));
+                    sender.sendMessage("World=" + worldName + " AllChunks=" + allChunks + " Bounds=(" + lboundx + "," + uboundx + ")-(" + lboundz + "," + uboundz + ")");
+                    sender.sendMessage(String.format("%d/%d Regions done (%d%%), %d chunks.", d, total, percent, done));
+                    if (tickCooldown > 0) sender.sendMessage("TickCooldown=" + tickCooldown);
                     if (currentRegion != null) sender.sendMessage(String.format("Current region: %d,%d with %d chunks", currentRegion.x, currentRegion.z, chunks.size()));
                 }
                 sender.sendMessage("Free: " + (Runtime.getRuntime().freeMemory() / 1024 / 1024) + " MiB");
@@ -197,7 +209,10 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                     int z = l.getBlockZ();
                     int cx = x >> 4;
                     int cz = z >> 4;
-                    sender.sendMessage("" + ++i + "] " + p.getName() + " loc=(" + x + "," + z + ") chunk=(" + cx + "," + cz + ") cd=" + cd);
+                    Vec anchor = anchors.get(p.getUniqueId());
+                    int ax = anchor == null ? 0 : anchor.x;
+                    int az = anchor == null ? 0 : anchor.z;
+                    sender.sendMessage("" + ++i + "] " + p.getName() + " loc=(" + x + "," + z + ") chunk=(" + cx + "," + cz + ") anchor=(" + ax + "," + az + ") cd=" + cd);
                 }
                 return true;
             }
@@ -245,6 +260,13 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         total = config.getInt("total");
         done = config.getInt("done");
         allChunks = config.getBoolean("all");
+        List<Integer> bounds = config.getIntegerList("bounds");
+        if (bounds.size() == 4) {
+            lboundx = bounds.get(0);
+            lboundz = bounds.get(1);
+            uboundx = bounds.get(2);
+            uboundz = bounds.get(3);
+        }
         if (chunks != null && regions != null) {
             getLogger().info("" + regions.size() + " regions and " + chunks.size() + " chunks loaded");
         }
@@ -272,6 +294,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             }
             config.set("regions", ls);
         }
+        config.set("bounds", Arrays.asList(lboundx, lboundz, uboundx, uboundz));
         try {
             config.save(new File(getDataFolder(), "todo.yml"));
         } catch (IOException ioe) {
@@ -300,11 +323,14 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             fakeCooldown = 20;
         }
         if (fakeCooldown > 0) fakeCooldown -= 1;
+        long now = System.nanoTime();
         for (Player player: getServer().getOnlinePlayers()) {
             // Fetch new chunks if necessary.
-            long now = System.nanoTime();
             while (chunks.isEmpty()) {
-                if (System.nanoTime() - now > 1000000000) break;
+                if (System.nanoTime() - now > 1000000000) {
+                    getLogger().info("Many fully generated regions in a row. Skipping tick.");
+                    break;
+                }
                 if (regions.isEmpty()) {
                     regions = null;
                     chunks = null;
@@ -338,7 +364,10 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 if (allChunks || !file.exists()) {
                     for (int z = 0; z < 32; z += 1) {
                         for (int x = 0; x < 32; x += 1) {
-                            chunks.add(new Vec(minX + x, minZ + z));
+                            int cx = minX + x;
+                            int cz = minZ + z;
+                            if (cx < lboundx || cx > uboundx || cz < lboundz || cz > uboundz) continue;
+                            chunks.add(new Vec(cx, cz));
                         }
                     }
                 } else {
@@ -346,12 +375,15 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                         FileInputStream fis = new FileInputStream(file);
                         for (int z = 0; z < 32; z += 1) {
                             for (int x = 0; x < 32; x += 1) {
+                                int cx = minX + x;
+                                int cz = minZ + z;
+                                if (cx < lboundx || cx > uboundx || cz < lboundz || cz > uboundz) continue;
                                 int o1 = fis.read();
                                 int o2 = fis.read();
                                 int o3 = fis.read();
                                 int sc = fis.read();
                                 if ((o1 == 0 && o2 == 0 && o3 == 0) || sc == 0) {
-                                    chunks.add(new Vec(minX + x, minZ + z));
+                                    chunks.add(new Vec(cx, cz));
                                 }
                             }
                         }
@@ -369,12 +401,13 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                     }
                 }
                 regions.remove(nextRegion);
+                currentRegion = nextRegion;
                 getLogger().info("New region: " + filename + ", " + chunks.size() + " chunks. Saving todo and " + world.getName() + ".");
                 saveTodo();
                 world.save();
                 Runtime.getRuntime().gc();
             }
-            if (chunks.isEmpty()) return;
+            if (chunks.isEmpty()) continue;
             Integer popCooldown = playerPopulateCooldown.get(player.getUniqueId());
             if (popCooldown != null) {
                 popCooldown -= Math.max(1, interval);
@@ -391,29 +424,25 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 anchor = new Vec(chunk.getX(), chunk.getZ());
                 anchors.put(player.getUniqueId(), anchor);
             }
-            int chunkX = anchor.x;
-            int chunkZ = anchor.z;
-            Vec nextVec = null;
+            Vec nextChunk = null;
             int minDist = 0;
             for (Vec vec: chunks) {
-                int dist = Math.max(Math.abs(vec.x - chunkX), Math.abs(vec.z - chunkZ));
-                if (nextVec == null || minDist > dist) {
-                    nextVec = vec;
+                int dist = Math.max(Math.abs(vec.x - anchor.x), Math.abs(vec.z - anchor.z));
+                if (nextChunk == null || minDist > dist) {
+                    nextChunk = vec;
                     minDist = dist;
                 }
             }
             if (minDist > 4) {
-                anchors.put(player.getUniqueId(), nextVec);
+                anchors.put(player.getUniqueId(), nextChunk);
             }
-            chunks.remove(nextVec);
-            currentRegion = nextVec;
-            int x = nextVec.x * 16 + 8;
-            int z = nextVec.z * 16 + 8;
+            chunks.remove(nextChunk);
+            int x = nextChunk.x * 16 + 8;
+            int z = nextChunk.z * 16 + 8;
             Location location = world.getHighestBlockAt(x, z).getLocation().add(0.5, 0.1, 0.5);
             Location playerLocation = player.getLocation();
             location.setYaw(playerLocation.getYaw());
             location.setPitch(playerLocation.getPitch());
-            location.getBlock().getType();
             player.setGameMode(GameMode.CREATIVE);
             player.setAllowFlight(true);
             player.setFlying(true);
