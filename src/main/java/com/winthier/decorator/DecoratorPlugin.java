@@ -44,6 +44,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     private int playerPopulateInterval;
     private int memoryThreshold, memoryWaitTime;
     private int fakePlayers;
+    private int lowMemRestartThreshold;
     // State information (todo.yml)
     private Set<Vec> chunks, regions;
     private int total, done;
@@ -59,6 +60,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     private final Map<UUID, Vec> anchors = new HashMap<>();
     private int fakeCount = (int)System.nanoTime() % 10000, fakeCooldown;
     private int previousChunks = 0;
+    private int lowMemCount = 0;
 
     @Value
     final class Vec {
@@ -80,10 +82,12 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         fakePlayers = getConfig().getInt("fake-players");
         memoryThreshold = getConfig().getInt("memory-threshold");
         memoryWaitTime = getConfig().getInt("memory-wait-time");
+        lowMemRestartThreshold = getConfig().getInt("low-mem-restart-threshold");
         getLogger().info("Player Populate Interval: " + playerPopulateInterval + " ticks");
         getLogger().info("Fake Players: " + fakePlayers);
         getLogger().info("Memory Threshold: " + memoryThreshold + " MiB");
         getLogger().info("Memory Wait Time: " + memoryWaitTime + " seconds");
+        getLogger().info("Low Memory Restart Threshold: " + lowMemRestartThreshold + " times");
     }
 
     @Override
@@ -313,9 +317,15 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             return;
         }
         if (freeMem() < (long)(1024 * 1024 * memoryThreshold)) {
-            getLogger().info("Low on memory. Waiting " + memoryWaitTime + " seconds...");
-            tickCooldown = 20 * memoryWaitTime;
-            System.gc();
+            lowMemCount += 1;
+            if (lowMemCount == lowMemRestartThreshold) {
+                getLogger().info("Restarting due to " + lowMemRestartThreshold + " times low memory.");
+                getServer().shutdown();
+            } else {
+                getLogger().info("Low on memory. Waiting " + memoryWaitTime + " seconds...");
+                tickCooldown = 20 * memoryWaitTime;
+                System.gc();
+            }
             return;
         }
         if (world == null && worldName == null) return;
