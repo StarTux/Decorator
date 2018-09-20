@@ -283,7 +283,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         if (fakeCooldown > 0) fakeCooldown -= 1;
         for (Player player: getServer().getOnlinePlayers()) {
             // Fetch new chunks if necessary.
-            while (chunks.isEmpty()) {
+            if (chunks.isEmpty()) {
                 if (regions.isEmpty()) {
                     regions = null;
                     chunks = null;
@@ -342,6 +342,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 world.save();
                 Runtime.getRuntime().gc();
             }
+            if (chunks.isEmpty()) return;
             Integer popCooldown = playerPopulateCooldown.get(player.getUniqueId());
             if (popCooldown != null) {
                 popCooldown -= Math.max(1, interval);
