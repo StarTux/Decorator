@@ -185,13 +185,14 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 }
                 boolean all = args.length >= 3 && args[2].equals("all");
                 try {
-                    initWorld(world, all);
+                    initWorld(theWorld, all);
                 } catch (IllegalStateException ise) {
                     sender.sendMessage("Error: " + ise.getMessage());
                     return true;
                 }
                 sender.sendMessage("" + this.total + " regions scheduled.");
                 saveTodo();
+                return true;
             }
             break;
         case "pause":
