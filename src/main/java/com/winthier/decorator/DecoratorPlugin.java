@@ -10,9 +10,13 @@ import com.github.steveice10.packetlib.event.session.DisconnectedEvent;
 import com.github.steveice10.packetlib.event.session.PacketReceivedEvent;
 import com.github.steveice10.packetlib.event.session.SessionAdapter;
 import com.github.steveice10.packetlib.tcp.TcpSessionFactory;
+import com.google.gson.Gson;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.Proxy;
 import java.util.ArrayList;
@@ -22,6 +26,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.Value;
@@ -45,6 +50,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     private int memoryThreshold, memoryWaitTime;
     private int fakePlayers;
     private int lowMemRestartThreshold;
+    private boolean batchMode;
     // State information (todo.yml)
     private Set<Vec> chunks, regions;
     private int total, done;
@@ -67,27 +73,89 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         public final int x, z;
     }
 
+    class Batch {
+        List<String> worlds;
+    }
+
     @Override
     public void onEnable() {
+        saveDefaultConfig();
         importConfig();
         loadTodo();
         getServer().getPluginManager().registerEvents(this, this);
         getServer().getScheduler().runTaskTimer(this, () -> onTick(), 1, 1);
+        if (this.batchMode && this.regions == null) {
+            // Run this on the next tick so other plugins can do their setup.
+            getServer().getScheduler().runTask(this, this::batchEnable);
+        }
+    }
+
+    /*
+     * Batch mode:
+     * If the current job is empty, try and read a new one from
+     * batch.json in the plugin folder.  If there is no such
+     * thing, shut the server down.
+     * An outside script needs to recognize the meaning of the
+     * DONE file.
+     */
+    private void batchEnable() {
+        getLogger().info("batchEnable()");
+        File file = new File(getDataFolder(), "batch.json");
+        if (file.exists()) {
+            Gson gson = new Gson();
+            Batch batch;
+            try (FileReader fr = new FileReader(file)) {
+                batch = gson.fromJson(fr, Batch.class);
+            } catch (IOException ioe) {
+                throw new IllegalStateException(ioe);
+            }
+            String theWorldName = batch.worlds.remove(0);
+            if (batch.worlds.isEmpty()) {
+                file.delete();
+                touch(new File("DONE"));
+            } else {
+                try (FileWriter fw = new FileWriter(file)) {
+                    gson.toJson(batch, fw);
+                } catch (IOException ioe) {
+                    throw new IllegalStateException(ioe);
+                }
+            }
+            World theWorld = getServer().getWorld(theWorldName);
+            // Consider creating world?
+            if (theWorld == null) throw new IllegalStateException("World not found: " + theWorldName + "!");
+            initWorld(theWorld, true);
+        } else {
+            touch(new File("DONE"));
+            getServer().shutdown();
+            return;
+        }
+    }
+
+    void touch(File file) {
+        if (!file.exists()) {
+            try {
+                new FileOutputStream(file).close();
+            } catch (IOException ioe) {
+                ioe.printStackTrace();
+            }
+        }
+        file.setLastModified(System.currentTimeMillis());
     }
 
     void importConfig() {
         reloadConfig();
-        saveDefaultConfig();
-        playerPopulateInterval = getConfig().getInt("player-populate-interval");
-        fakePlayers = getConfig().getInt("fake-players");
-        memoryThreshold = getConfig().getInt("memory-threshold");
-        memoryWaitTime = getConfig().getInt("memory-wait-time");
-        lowMemRestartThreshold = getConfig().getInt("low-mem-restart-threshold");
+        this.playerPopulateInterval = getConfig().getInt("player-populate-interval");
+        this.fakePlayers = getConfig().getInt("fake-players");
+        this.memoryThreshold = getConfig().getInt("memory-threshold");
+        this.memoryWaitTime = getConfig().getInt("memory-wait-time");
+        this.lowMemRestartThreshold = getConfig().getInt("low-mem-restart-threshold");
+        this.batchMode = getConfig().getBoolean("batch-mode");
         getLogger().info("Player Populate Interval: " + playerPopulateInterval + " ticks");
         getLogger().info("Fake Players: " + fakePlayers);
         getLogger().info("Memory Threshold: " + memoryThreshold + " MiB");
         getLogger().info("Memory Wait Time: " + memoryWaitTime + " seconds");
         getLogger().info("Low Memory Restart Threshold: " + lowMemRestartThreshold + " times");
+        getLogger().info("Batch mode: " + (this.batchMode ? "enabled" : "disabled"));
     }
 
     @Override
@@ -105,40 +173,25 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         switch (cmd) {
         case "init":
             if (args.length >= 1 && args.length <= 3) {
+                final World theWorld;
                 if (args.length >= 2) {
-                    world = getServer().getWorld(args[1]);
-                    worldName = world.getName();
+                    theWorld = getServer().getWorld(args[1]);
+                    if (theWorld == null) {
+                        sender.sendMessage("World not found: " + args[1] + "!");
+                        return true;
+                    }
                 } else {
-                    world = getServer().getWorlds().get(0);
-                    worldName = world.getName();
+                    theWorld = getServer().getWorlds().get(0);
                 }
-                double radius = world.getWorldBorder().getSize() * 0.5;
-                if (radius > 100000) {
-                    sender.sendMessage("World border too large!");
+                boolean all = args.length >= 3 && args[2].equals("all");
+                try {
+                    initWorld(world, all);
+                } catch (IllegalStateException ise) {
+                    sender.sendMessage("Error: " + ise.getMessage());
                     return true;
                 }
-                allChunks = args.length >= 3 && args[2].equals("all");
-                Chunk min = world.getWorldBorder().getCenter().add(-radius, 0, -radius).getChunk();
-                Chunk max = world.getWorldBorder().getCenter().add(radius, 0, radius).getChunk();
-                lboundx = min.getX();
-                lboundz = min.getZ();
-                uboundx = max.getX();
-                uboundz = max.getZ();
-                regions = new HashSet<>();
-                int minX = min.getX() >> 5;
-                int minZ = min.getZ() >> 5;
-                int maxX = max.getX() >> 5;
-                int maxZ = max.getZ() >> 5;
-                for (int z = minZ + 1; z <= maxZ; z += 1) {
-                    for (int x = minX; x <= maxX; x += 1) {
-                        regions.add(new Vec(x, z));
-                    }
-                }
-                chunks = new HashSet<>();
-                total = regions.size();
-                done = 0;
-                sender.sendMessage("" + total + " regions scheduled.");
-                return true;
+                sender.sendMessage("" + this.total + " regions scheduled.");
+                saveTodo();
             }
             break;
         case "pause":
@@ -239,6 +292,36 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             break;
         }
         return false;
+    }
+
+    void initWorld(World theWorld, boolean all) {
+        Objects.requireNonNull(theWorld, "theWorld cannot be null");
+        getLogger().info("Initializing world " + theWorld.getName() + ".");
+        this.world = theWorld;
+        this.worldName = theWorld.getName();
+        double radius = theWorld.getWorldBorder().getSize() * 0.5;
+        if (radius > 100000) throw new IllegalStateException("World border radius too large: " + radius + "!");
+        this.allChunks = all;
+        Chunk min = theWorld.getWorldBorder().getCenter().add(-radius, 0, -radius).getChunk();
+        Chunk max = theWorld.getWorldBorder().getCenter().add(radius, 0, radius).getChunk();
+        lboundx = min.getX();
+        lboundz = min.getZ();
+        uboundx = max.getX();
+        uboundz = max.getZ();
+        this.regions = new HashSet<>();
+        int minX = min.getX() >> 5;
+        int minZ = min.getZ() >> 5;
+        int maxX = max.getX() >> 5;
+        int maxZ = max.getZ() >> 5;
+        for (int z = minZ + 1; z <= maxZ; z += 1) {
+            for (int x = minX; x <= maxX; x += 1) {
+                regions.add(new Vec(x, z));
+            }
+        }
+        this.chunks = new HashSet<>();
+        this.total = regions.size();
+        this.done = 0;
+        if (this.batchMode) getLogger().info("World " + theWorld.getName() + ": " + this.total + " regions scheduled.");
     }
 
     void loadTodo() {
@@ -351,6 +434,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 regions = null;
                 chunks = null;
                 getLogger().info("Done!");
+                if (this.batchMode) getServer().shutdown();
                 return;
             }
             Vec nextRegion = null;

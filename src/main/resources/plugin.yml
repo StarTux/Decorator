@@ -11,7 +11,7 @@ commands:
     aliases: [ dec ]
     description: Decorator
     usage: |-
-      /dec init (all)
+      /dec init <WORLD> (all)
       /dec reload
       /dec pause
       /dec save
