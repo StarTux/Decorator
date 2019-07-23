@@ -18,12 +18,6 @@
       <url>https://cavetale.com/jenkins/plugin/repository/everything/</url>
     </repository>
 
-    <!-- Jitpack Repo -->
-    <repository>
-      <id>jitpack.io</id>
-      <url>https://jitpack.io</url>
-    </repository>
-
     <!-- Spigot Repo -->
     <repository>
       <id>spigot-repo</id>
@@ -54,8 +48,31 @@
       <groupId>com.github.steveice10</groupId>
       <artifactId>mcprotocollib</artifactId>
       <version>1.14.4-SNAPSHOT</version>
-      <scope>provided</scope>
-      <optional>true</optional>
+      <scope>compile</scope>
+    </dependency>
+
+    <!-- OpenNBT -->
+    <dependency>
+      <groupId>com.github.steveice10</groupId>
+      <artifactId>opennbt</artifactId>
+      <version>1.3-SNAPSHOT</version>
+      <scope>compile</scope>
+    </dependency>
+
+    <!-- PacketLib -->
+    <dependency>
+      <groupId>com.github.steveice10</groupId>
+      <artifactId>packetlib</artifactId>
+      <version>1.4-SNAPSHOT</version>
+      <scope>compile</scope>
+    </dependency>
+
+    <!-- MCAuthLib -->
+    <dependency>
+      <groupId>com.github.steveice10</groupId>
+      <artifactId>mcauthlib</artifactId>
+      <version>1.1-SNAPSHOT</version>
+      <scope>compile</scope>
     </dependency>
 
   </dependencies>
