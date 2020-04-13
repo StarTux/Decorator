@@ -1,15 +1,5 @@
 package com.winthier.decorator;
 
-import com.github.steveice10.mc.protocol.MinecraftConstants;
-import com.github.steveice10.mc.protocol.MinecraftProtocol;
-import com.github.steveice10.mc.protocol.data.message.Message;
-import com.github.steveice10.mc.protocol.packet.ingame.client.ClientChatPacket;
-import com.github.steveice10.mc.protocol.packet.ingame.server.ServerJoinGamePacket;
-import com.github.steveice10.packetlib.Client;
-import com.github.steveice10.packetlib.event.session.DisconnectedEvent;
-import com.github.steveice10.packetlib.event.session.PacketReceivedEvent;
-import com.github.steveice10.packetlib.event.session.SessionAdapter;
-import com.github.steveice10.packetlib.tcp.TcpSessionFactory;
 import com.google.gson.Gson;
 import java.io.File;
 import java.io.FileInputStream;
@@ -18,19 +8,13 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.net.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
-import lombok.Value;
-import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -39,39 +23,41 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.world.ChunkPopulateEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public final class DecoratorPlugin extends JavaPlugin implements Listener {
+public final class DecoratorPlugin extends JavaPlugin {
     // Configuration values (config.yml)
     private int playerPopulateInterval;
-    private int memoryThreshold, memoryWaitTime;
+    private int memoryThreshold;
+    private int memoryWaitTime;
     private int fakePlayers;
-    private int lowMemRestartThreshold;
     private boolean batchMode;
     // State information (todo.yml)
-    private Set<Vec> chunks, regions;
-    private int total, done;
-    private boolean paused, debug;
+    private Set<Vec> chunks;
+    private Set<Vec> regions;
+    private int total;
+    private int done;
+    private boolean paused;
+    private boolean debug;
     private boolean allChunks;
-    private final Map<UUID, Integer> playerPopulateCooldown = new HashMap<>();
     private String worldName;
     private int tickCooldown;
-    private int lboundx, lboundz, uboundx, uboundz;
+    private int lboundx;
+    private int lboundz;
+    private int uboundx;
+    private int uboundz;
     // Non-persistent state
     private World world;
-    private transient Vec currentRegion = new Vec(0, 0), pivotRegion = new Vec(0, 0);
-    private final Map<UUID, Vec> anchors = new HashMap<>();
-    private int fakeCount = (int)System.nanoTime() % 10000, fakeCooldown;
+    private transient Vec currentRegion = new Vec(0, 0);
+    private transient Vec pivotRegion = new Vec(0, 0);
+    private int fakeCount = (int) System.nanoTime() % 10000;
+    private int fakeCooldown;
     private int previousChunks = 0;
-    private int lowMemCount = 0;
-
-    @Value
-    final class Vec {
-        public final int x, z;
-    }
+    // Components
+    static final String META = "decorator:meta";
+    MCProtocolLib mcProtocolLib = new MCProtocolLib();
+    Metadata metadata = new Metadata(this);
+    EventListener listener = new EventListener(this);
 
     class Batch {
         List<String> worlds;
@@ -82,9 +68,9 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         saveDefaultConfig();
         importConfig();
         loadTodo();
-        getServer().getPluginManager().registerEvents(this, this);
+        getServer().getPluginManager().registerEvents(listener, this);
         getServer().getScheduler().runTaskTimer(this, () -> onTick(), 1, 1);
-        if (this.batchMode && this.regions == null) {
+        if (batchMode && regions == null) {
             // Run this on the next tick so other plugins can do their setup.
             getServer().getScheduler().runTask(this, this::batchEnable);
         }
@@ -122,7 +108,9 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             }
             World theWorld = getServer().getWorld(theWorldName);
             // Consider creating world?
-            if (theWorld == null) throw new IllegalStateException("World not found: " + theWorldName + "!");
+            if (theWorld == null) {
+                throw new IllegalStateException("World not found: " + theWorldName + "!");
+            }
             initWorld(theWorld, true);
         } else {
             touch(new File("DONE"));
@@ -144,18 +132,16 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
 
     void importConfig() {
         reloadConfig();
-        this.playerPopulateInterval = getConfig().getInt("player-populate-interval");
-        this.fakePlayers = getConfig().getInt("fake-players");
-        this.memoryThreshold = getConfig().getInt("memory-threshold");
-        this.memoryWaitTime = getConfig().getInt("memory-wait-time");
-        this.lowMemRestartThreshold = getConfig().getInt("low-mem-restart-threshold");
-        this.batchMode = getConfig().getBoolean("batch-mode");
+        playerPopulateInterval = getConfig().getInt("player-populate-interval");
+        fakePlayers = getConfig().getInt("fake-players");
+        memoryThreshold = getConfig().getInt("memory-threshold");
+        memoryWaitTime = getConfig().getInt("memory-wait-time");
+        batchMode = getConfig().getBoolean("batch-mode");
         getLogger().info("Player Populate Interval: " + playerPopulateInterval + " ticks");
         getLogger().info("Fake Players: " + fakePlayers);
         getLogger().info("Memory Threshold: " + memoryThreshold + " MiB");
         getLogger().info("Memory Wait Time: " + memoryWaitTime + " seconds");
-        getLogger().info("Low Memory Restart Threshold: " + lowMemRestartThreshold + " times");
-        getLogger().info("Batch mode: " + (this.batchMode ? "enabled" : "disabled"));
+        getLogger().info("Batch mode: " + (batchMode ? "enabled" : "disabled"));
     }
 
     @Override
@@ -165,7 +151,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        final Player player = sender instanceof Player ? (Player)sender : null;
+        final Player player = sender instanceof Player ? (Player) sender : null;
         String cmd = args.length == 0 ? null : args[0].toLowerCase();
         if (args.length == 0) {
             return false;
@@ -190,7 +176,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                     sender.sendMessage("Error: " + ise.getMessage());
                     return true;
                 }
-                sender.sendMessage("" + this.total + " regions scheduled.");
+                sender.sendMessage("" + total + " regions scheduled.");
                 saveTodo();
                 return true;
             }
@@ -243,10 +229,20 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 } else {
                     int d = total - regions.size();
                     int percent = total > 0 ? d * 100 / total : 0;
-                    sender.sendMessage("World=" + worldName + " AllChunks=" + allChunks + " Bounds=(" + lboundx + "," + lboundz + ")-(" + uboundx + "," + uboundz + ")");
-                    sender.sendMessage(String.format("%d/%d Regions done (%d%%), %d chunks.", d, total, percent, done));
+                    sender.sendMessage("World=" + worldName
+                                       + " AllChunks="
+                                       + allChunks
+                                       + " Bounds=(" + lboundx + "," + lboundz
+                                       + ")-(" + uboundx + "," + uboundz + ")");
+                    String fmt = String.format("%d/%d Regions done (%d%%), %d chunks.",
+                                               d, total, percent, done);
+                    sender.sendMessage(fmt);
                     if (tickCooldown > 0) sender.sendMessage("TickCooldown=" + tickCooldown);
-                    if (currentRegion != null) sender.sendMessage(String.format("Current region: %d,%d with %d chunks", currentRegion.x, currentRegion.z, chunks.size()));
+                    if (currentRegion != null) {
+                        fmt = String.format("Current region: %d,%d with %d chunks",
+                                            currentRegion.x, currentRegion.z, chunks.size());
+                        sender.sendMessage(fmt);
+                    }
                 }
                 sender.sendMessage("Free: " + (freeMem() / 1024 / 1024) + " MiB");
                 if (paused) sender.sendMessage("Paused");
@@ -259,17 +255,20 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 sender.sendMessage("" + ps.size() + " Players:");
                 int i = 0;
                 for (Player p: ps) {
+                    Meta meta = metaOf(p);
                     Location l = p.getLocation();
-                    Integer cooldown = playerPopulateCooldown.get(p.getUniqueId());
-                    int cd = cooldown == null ? 0 : cooldown;
                     int x = l.getBlockX();
                     int z = l.getBlockZ();
-                    int cx = x >> 4;
-                    int cz = z >> 4;
-                    Vec anchor = anchors.get(p.getUniqueId());
-                    int ax = anchor == null ? 0 : anchor.x;
-                    int az = anchor == null ? 0 : anchor.z;
-                    sender.sendMessage("" + ++i + "] " + p.getName() + " loc=(" + x + "," + z + ") chunk=(" + cx + "," + cz + ") anchor=(" + ax + "," + az + ") cd=" + cd);
+                    float yaw = l.getYaw();
+                    Chunk c = l.getChunk();
+                    int cx = c.getX();
+                    int cz = c.getZ();
+                    sender.sendMessage("" + ++i + "] " + p.getName()
+                                       + " loc=(" + x + "," + z + ", " + yaw + ")"
+                                       + " chunk=(" + cx + "," + cz + ")"
+                                       + " anchor=(" + meta.anchor + ")"
+                                       + " cd=" + meta.populateCooldown
+                                       + " warping=" + meta.warping);
                 }
                 return true;
             }
@@ -284,7 +283,7 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             break;
         case "fake":
             if (args.length == 2) {
-                spawnFakePlayer(args[1]);
+                mcProtocolLib.spawnFakePlayer(args[1]);
                 sender.sendMessage("Fake user logged in.");
                 return true;
             }
@@ -298,18 +297,20 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
     void initWorld(World theWorld, boolean all) {
         Objects.requireNonNull(theWorld, "theWorld cannot be null");
         getLogger().info("Initializing world " + theWorld.getName() + ".");
-        this.world = theWorld;
-        this.worldName = theWorld.getName();
+        world = theWorld;
+        worldName = theWorld.getName();
         double radius = theWorld.getWorldBorder().getSize() * 0.5;
-        if (radius > 100000) throw new IllegalStateException("World border radius too large: " + radius + "!");
-        this.allChunks = all;
+        if (radius > 100000) {
+            throw new IllegalStateException("World border radius too large: " + radius + "!");
+        }
+        allChunks = all;
         Chunk min = theWorld.getWorldBorder().getCenter().add(-radius, 0, -radius).getChunk();
         Chunk max = theWorld.getWorldBorder().getCenter().add(radius, 0, radius).getChunk();
         lboundx = min.getX();
         lboundz = min.getZ();
         uboundx = max.getX();
         uboundz = max.getZ();
-        this.regions = new HashSet<>();
+        regions = new HashSet<>();
         int minX = min.getX() >> 5;
         int minZ = min.getZ() >> 5;
         int maxX = max.getX() >> 5;
@@ -319,14 +320,18 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
                 regions.add(new Vec(x, z));
             }
         }
-        this.chunks = new HashSet<>();
-        this.total = regions.size();
-        this.done = 0;
-        if (this.batchMode) getLogger().info("World " + theWorld.getName() + ": " + this.total + " regions scheduled.");
+        chunks = new HashSet<>();
+        total = regions.size();
+        done = 0;
+        if (batchMode) {
+            getLogger().info("World " + theWorld.getName() + ": "
+                             + total + " regions scheduled.");
+        }
     }
 
     void loadTodo() {
-        YamlConfiguration config = YamlConfiguration.loadConfiguration(new File(getDataFolder(), "todo.yml"));
+        File file = new File(getDataFolder(), "todo.yml");
+        YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
         regions = null;
         if (config.isSet("regions")) {
             regions = new HashSet<>();
@@ -355,7 +360,8 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
             uboundz = bounds.get(3);
         }
         if (chunks != null && regions != null) {
-            getLogger().info("" + regions.size() + " regions and " + chunks.size() + " chunks loaded");
+            getLogger().info("" + regions.size() + " regions and "
+                             + chunks.size() + " chunks loaded");
         }
     }
 
@@ -394,227 +400,231 @@ public final class DecoratorPlugin extends JavaPlugin implements Listener {
         return rt.freeMemory() + rt.maxMemory() - rt.totalMemory();
     }
 
+    void fetchNewChunks() {
+        if (previousChunks > 0) {
+            previousChunks = 0;
+            world.save();
+            Runtime.getRuntime().gc();
+        }
+        if (regions.isEmpty()) {
+            regions = null;
+            chunks = null;
+            getLogger().info("Done!");
+            if (batchMode) getServer().shutdown();
+            return;
+        }
+        Vec nextRegion = null;
+        int nextRegionDist = 0;
+        for (Vec vec: regions) {
+            int dist = Math.max(Math.abs(pivotRegion.x - vec.x),
+                                Math.abs(pivotRegion.z - vec.z));
+            if (nextRegion == null || (dist < nextRegionDist)) {
+                nextRegion = vec;
+                nextRegionDist = dist;
+            }
+        }
+        String filename = "r." + nextRegion.x + "." + nextRegion.z + ".mca";
+        File file = world.getWorldFolder();
+        switch (world.getEnvironment()) {
+        case NETHER:
+            file = new File(file, "DIM-1");
+            break;
+        case THE_END:
+            file = new File(file, "DIM1");
+            break;
+        default:
+            break;
+        }
+        file = new File(file, "region");
+        file = new File(file, filename);
+        int minX = nextRegion.x * 32;
+        int minZ = nextRegion.z * 32;
+        if (allChunks || !file.exists()) {
+            for (int z = 0; z < 32; z += 1) {
+                for (int x = 0; x < 32; x += 1) {
+                    int cx = minX + x;
+                    int cz = minZ + z;
+                    if (cx < lboundx || cx > uboundx || cz < lboundz || cz > uboundz) continue;
+                    chunks.add(new Vec(cx, cz));
+                }
+            }
+        } else {
+            try {
+                FileInputStream fis = new FileInputStream(file);
+                for (int z = 0; z < 32; z += 1) {
+                    for (int x = 0; x < 32; x += 1) {
+                        int cx = minX + x;
+                        int cz = minZ + z;
+                        if (cx < lboundx || cx > uboundx || cz < lboundz || cz > uboundz) continue;
+                        int o1 = fis.read();
+                        int o2 = fis.read();
+                        int o3 = fis.read();
+                        int sc = fis.read();
+                        if ((o1 == 0 && o2 == 0 && o3 == 0) || sc == 0) {
+                            chunks.add(new Vec(cx, cz));
+                        }
+                    }
+                }
+                fis.close();
+            } catch (FileNotFoundException nfne) {
+                System.err.println("File not found: " + file);
+                nfne.printStackTrace();
+                paused = true;
+                return;
+            } catch (IOException ioe) {
+                System.err.println("Exception reading " + file + ":");
+                ioe.printStackTrace();
+                paused = true;
+                return;
+            }
+        }
+        regions.remove(nextRegion);
+        int dist = Math.max(Math.abs(currentRegion.x - pivotRegion.x),
+                            Math.abs(currentRegion.z - pivotRegion.z));
+        if (dist > 1) {
+            pivotRegion = currentRegion;
+        }
+        currentRegion = nextRegion;
+        if (chunks.size() > 0) {
+            getLogger().info("New region: " + filename + ", " + chunks.size() + " chunks.");
+            previousChunks = chunks.size();
+        }
+    }
+
+    Meta metaOf(Player player) {
+        return metadata.get(player, META, Meta.class, Meta::new);
+    }
+
+    void tickPlayer(Player player) {
+        Meta meta = metaOf(player);
+        if (meta.warping) return;
+        // Wait cooldown
+        if (meta.populateCooldown > 0) {
+            meta.populateCooldown -= 1;
+            return;
+        }
+        // Rotating players did not populate more chunks.
+        Vec anchor = meta.anchor;
+        if (anchor == null) {
+            Chunk chunk = player.getLocation().getChunk();
+            anchor = new Vec(chunk.getX(), chunk.getZ());
+            meta.anchor = anchor;
+        }
+        Vec nextChunk = null;
+        int nextChunkDist = 0;
+        for (Vec vec: chunks) {
+            int dist = Math.max(Math.abs(vec.x - anchor.x), Math.abs(vec.z - anchor.z));
+            if (nextChunk == null || dist < nextChunkDist) {
+                nextChunk = vec;
+                nextChunkDist = dist;
+            }
+        }
+        if (nextChunkDist > 4) {
+            meta.anchor = nextChunk;
+        }
+        chunks.remove(nextChunk);
+        meta.warping = true;
+        final int x = (nextChunk.x << 4) + 8;
+        final int z = (nextChunk.z << 4) + 8;
+        world.getChunkAtAsync(nextChunk.x, nextChunk.z, true, chunk -> {
+                getServer().getScheduler().runTask(this, () -> DecoratorEvent.call(chunk));
+                player.setGameMode(GameMode.CREATIVE);
+                player.setAllowFlight(true);
+                player.setFlying(true);
+                final int y = world.getHighestBlockYAt(x, z) + 4;
+                Location location = new Location(world,
+                                                 x, y, z,
+                                                 0.0f, 0.0f);
+                player.teleport(location);
+                meta.populateCooldown = playerPopulateInterval;
+                meta.warpLocation = location;
+                meta.warping = false;
+            });
+        done += 1;
+    }
+
     void onTick() {
         if (paused || regions == null || chunks == null) return;
         if (tickCooldown > 0) {
             tickCooldown -= 1;
             return;
         }
-        if (freeMem() < (long)(1024 * 1024 * memoryThreshold)) {
-            lowMemCount += 1;
-            if (lowMemCount == lowMemRestartThreshold) {
-                getLogger().info("Restarting due to " + lowMemRestartThreshold + " times low memory.");
-                getServer().shutdown();
-            } else {
-                getLogger().info("Low on memory. Waiting " + memoryWaitTime + " seconds...");
-                tickCooldown = 20 * memoryWaitTime;
-                System.gc();
-            }
+        // Set tickCooldown
+        if (freeMem() < (long) (1024 * 1024 * memoryThreshold)) {
+            getLogger().info("Low on memory. Waiting " + memoryWaitTime + " seconds...");
+            tickCooldown = 20 * memoryWaitTime;
+            System.gc();
             return;
         }
+        // Validate world
         if (world == null && worldName == null) return;
         if (world == null) world = getServer().getWorld(worldName);
         if (world == null) return;
-        if (fakeCooldown <= 0 && getServer().getOnlinePlayers().size() < fakePlayers) {
-            spawnFakePlayer("fake" + fakeCount++);
+        // Spawn fake players
+        final int playerCount = getServer().getOnlinePlayers().size();
+        if (mcProtocolLib != null && fakeCooldown <= 0 && playerCount < fakePlayers) {
+            mcProtocolLib.spawnFakePlayer("fake" + fakeCount++);
             fakeCooldown = 20;
         }
         if (fakeCooldown > 0) fakeCooldown -= 1;
-        long now = System.nanoTime();
-        // Fetch new chunks if necessary.
-        while (chunks.isEmpty()) {
-            if (System.nanoTime() - now > 1000000000) {
-                return;
-            }
-            if (previousChunks > 0) {
-                previousChunks = 0;
-                world.save();
-                Runtime.getRuntime().gc();
-            }
-            if (regions.isEmpty()) {
-                regions = null;
-                chunks = null;
-                getLogger().info("Done!");
-                if (this.batchMode) getServer().shutdown();
-                return;
-            }
-            Vec nextRegion = null;
-            for (Vec vec: regions) {
-                if (nextRegion == null
-                    || (Math.max(Math.abs(pivotRegion.x - vec.x), Math.abs(pivotRegion.z - vec.z)) < Math.max(Math.abs(pivotRegion.x - nextRegion.x), Math.abs(pivotRegion.z - nextRegion.z)))) {
-                    nextRegion = vec;
-                }
-            }
-            String filename = "r." + nextRegion.x + "." + nextRegion.z + ".mca";
-            File file = world.getWorldFolder();
-            switch (world.getEnvironment()) {
-            case NETHER:
-                file = new File(file, "DIM-1");
-                break;
-            case THE_END:
-                file = new File(file, "DIM1");
-                break;
-            default:
-                break;
-            }
-            file = new File(file, "region");
-            file = new File(file, filename);
-            int minX = nextRegion.x * 32;
-            int minZ = nextRegion.z * 32;
-            if (allChunks || !file.exists()) {
-                for (int z = 0; z < 32; z += 1) {
-                    for (int x = 0; x < 32; x += 1) {
-                        int cx = minX + x;
-                        int cz = minZ + z;
-                        if (cx < lboundx || cx > uboundx || cz < lboundz || cz > uboundz) continue;
-                        chunks.add(new Vec(cx, cz));
-                    }
-                }
-            } else {
-                try {
-                    FileInputStream fis = new FileInputStream(file);
-                    for (int z = 0; z < 32; z += 1) {
-                        for (int x = 0; x < 32; x += 1) {
-                            int cx = minX + x;
-                            int cz = minZ + z;
-                            if (cx < lboundx || cx > uboundx || cz < lboundz || cz > uboundz) continue;
-                            int o1 = fis.read();
-                            int o2 = fis.read();
-                            int o3 = fis.read();
-                            int sc = fis.read();
-                            if ((o1 == 0 && o2 == 0 && o3 == 0) || sc == 0) {
-                                chunks.add(new Vec(cx, cz));
-                            }
-                        }
-                    }
-                    fis.close();
-                } catch (FileNotFoundException nfne) {
-                    System.err.println("File not found: " + file);
-                    nfne.printStackTrace();
-                    paused = true;
-                    return;
-                } catch (IOException ioe) {
-                    System.err.println("Exception reading " + file + ":");
-                    ioe.printStackTrace();
-                    paused = true;
-                    return;
-                }
-            }
-            regions.remove(nextRegion);
-            if (Math.max(Math.abs(currentRegion.x - pivotRegion.x), Math.abs(currentRegion.z - pivotRegion.z)) > 1) pivotRegion = currentRegion;
-            currentRegion = nextRegion;
-            if (chunks.size() > 0) {
-                getLogger().info("New region: " + filename + ", " + chunks.size() + " chunks.");
-                previousChunks = chunks.size();
-            }
+        if (chunks.isEmpty()) {
+            fetchNewChunks();
             saveTodo();
+            return;
         }
-        if (chunks.isEmpty()) return;
+        //
         for (Player player: getServer().getOnlinePlayers()) {
             if (chunks.isEmpty()) break;
-            Integer popCooldown = playerPopulateCooldown.get(player.getUniqueId());
-            if (popCooldown != null) {
-                popCooldown -= 1;
-                if (popCooldown <= 0) {
-                    playerPopulateCooldown.remove(player.getUniqueId());
-                } else {
-                    playerPopulateCooldown.put(player.getUniqueId(), popCooldown);
-                }
-                continue;
-            }
-            Vec anchor = anchors.get(player.getUniqueId());
-            if (anchor == null) {
-                Chunk chunk = player.getLocation().getChunk();
-                anchor = new Vec(chunk.getX(), chunk.getZ());
-                anchors.put(player.getUniqueId(), anchor);
-            }
-            Vec nextChunk = null;
-            int minDist = 0;
-            for (Vec vec: chunks) {
-                int dist = Math.max(Math.abs(vec.x - anchor.x), Math.abs(vec.z - anchor.z));
-                if (nextChunk == null || minDist > dist) {
-                    nextChunk = vec;
-                    minDist = dist;
-                }
-            }
-            if (minDist > 4) {
-                anchors.put(player.getUniqueId(), nextChunk);
-            }
-            chunks.remove(nextChunk);
-            int x = nextChunk.x * 16 + 8;
-            int z = nextChunk.z * 16 + 8;
-            world.loadChunk(nextChunk.x, nextChunk.z, true);
-            Location location = world.getHighestBlockAt(x, z).getLocation().add(0.5, 0.1, 0.5);
-            Location playerLocation = player.getLocation();
-            location.setYaw(playerLocation.getYaw());
-            location.setPitch(playerLocation.getPitch());
-            player.setGameMode(GameMode.CREATIVE);
-            player.setAllowFlight(true);
-            player.setFlying(true);
-            player.teleport(location);
-            done += 1;
+            tickPlayer(player);
         }
     }
 
-    @EventHandler
-    public void onChunkPopulate(ChunkPopulateEvent event) {
+    void onChunkPopulate(Chunk chunk) {
         if (regions == null || chunks == null) return;
-        if (world == null && worldName == null) return;
-        if (world == null) world = getServer().getWorld(worldName);
-        if (!world.equals(event.getWorld())) return;
-        Vec vec = new Vec(event.getChunk().getX(), event.getChunk().getZ());
+        if (world == null) return;
+        if (!world.equals(chunk.getWorld())) return;
+        Vec vec = new Vec(chunk.getX(), chunk.getZ());
         if (!chunks.remove(vec)) return;
+        getServer().getScheduler().runTask(this, () -> DecoratorEvent.call(chunk));
+        // Find causing player
         Player causingPlayer = null;
-        int minDist = 0;
+        int causingPlayerDist = 0;
+        int viewDistance = 2 * world.getViewDistance();
         for (Player player: world.getPlayers()) {
-            Chunk chunk = player.getLocation().getChunk();
-            int dist = Math.max(Math.abs(vec.x - chunk.getX()), Math.abs(vec.z - chunk.getZ()));
-            if (dist < 5 && (causingPlayer == null || dist < minDist)) {
+            Chunk pc = player.getLocation().getChunk();
+            int dist = Math.max(Math.abs(vec.x - pc.getX()), Math.abs(vec.z - pc.getZ()));
+            if (dist > viewDistance) {
+                continue;
+            }
+            if (causingPlayer == null || dist < causingPlayerDist) {
                 causingPlayer = player;
-                minDist = dist;
+                causingPlayerDist = dist;
             }
         }
-        if (causingPlayer != null) playerPopulateCooldown.put(causingPlayer.getUniqueId(), playerPopulateInterval);
-        if (debug) {
-            String playerName = causingPlayer == null ? "Unknown" : causingPlayer.getName();
-            getLogger().info("POPULATE " + vec.x + " " + vec.z + " " + playerName);
+        if (causingPlayer != null) {
+            metaOf(causingPlayer).populateCooldown = playerPopulateInterval;
         }
+        // Update state
         done += 1;
         if (done % 10000 == 0) {
             printTodoProgressReport();
             saveTodo();
             world.save();
         }
+        // Debug
+        if (debug) {
+            String playerName = causingPlayer == null ? "N/A" : causingPlayer.getName();
+            getLogger().info("Populate"
+                             + " chunk=" + vec
+                             + " player=" + playerName
+                             + " dist=" + causingPlayerDist);
+        }
     }
 
     void printTodoProgressReport() {
         int d = total - regions.size();
         int percent = total > 0 ? d * 100 / total : 0;
-        getLogger().info(String.format("%d/%d Regions done (%d%%), %d chunks", d, total, percent, done));
-    }
-
-    // --- MCProtocolLib stuff
-
-    private void spawnFakePlayer(final String username) {
-        MinecraftProtocol protocol = new MinecraftProtocol(username);
-        Client client = new Client("localhost", Bukkit.getPort(), protocol, new TcpSessionFactory(Proxy.NO_PROXY));
-        client.getSession().setFlag(MinecraftConstants.AUTH_PROXY_KEY, Proxy.NO_PROXY);
-        client.getSession().addListener(new SessionAdapter() {
-            @Override
-            public void packetReceived(PacketReceivedEvent event) {
-                if (event.getPacket() instanceof ServerJoinGamePacket) {
-                    event.getSession().send(new ClientChatPacket(username + " says hello."));
-                }
-            }
-            @Override
-            public void disconnected(DisconnectedEvent event) {
-                System.out.println("Disconnected: " + Message.fromString(event.getReason()).getFullText());
-                if (event.getCause() != null) {
-                    event.getCause().printStackTrace();
-                }
-            }
-        });
-
-        client.getSession().connect();
+        getLogger().info(String.format("%d/%d Regions done (%d%%), %d chunks",
+                                       d, total, percent, done));
     }
 }
