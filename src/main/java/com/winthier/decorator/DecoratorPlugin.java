@@ -584,12 +584,12 @@ public final class DecoratorPlugin extends JavaPlugin {
         if (world == null) return;
         if (!world.equals(chunk.getWorld())) return;
         Vec vec = new Vec(chunk.getX(), chunk.getZ());
-        if (!chunks.remove(vec)) return;
+        if (!chunks.contains(vec)) return;
         getServer().getScheduler().runTask(this, () -> DecoratorEvent.call(chunk));
         // Find causing player
         Player causingPlayer = null;
         int causingPlayerDist = 0;
-        int viewDistance = 2 * world.getViewDistance();
+        int viewDistance = world.getViewDistance();
         for (Player player: world.getPlayers()) {
             Chunk pc = player.getLocation().getChunk();
             int dist = Math.max(Math.abs(vec.x - pc.getX()), Math.abs(vec.z - pc.getZ()));
@@ -601,9 +601,9 @@ public final class DecoratorPlugin extends JavaPlugin {
                 causingPlayerDist = dist;
             }
         }
-        if (causingPlayer != null) {
-            metaOf(causingPlayer).populateCooldown = playerPopulateInterval;
-        }
+        if (causingPlayer == null) return;
+        metaOf(causingPlayer).populateCooldown = playerPopulateInterval;
+        chunks.remove(vec);
         // Update state
         done += 1;
         if (done % 10000 == 0) {
