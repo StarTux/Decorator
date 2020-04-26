@@ -409,6 +409,7 @@ public final class DecoratorPlugin extends JavaPlugin {
         if (regions.isEmpty()) {
             regions = null;
             chunks = null;
+            saveTodo();
             getLogger().info("Done!");
             if (batchMode) getServer().shutdown();
             return;
