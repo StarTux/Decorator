@@ -564,7 +564,7 @@ public final class DecoratorPlugin extends JavaPlugin {
             do {
                 Runnable run = runQueue.remove(0);
                 run.run();
-                if (System.currentTimeMillis() - now >= 50) break;
+                if (System.currentTimeMillis() - now >= 50) return;
             } while (!runQueue.isEmpty());
         }
         if (regions == null || chunks == null) return;
