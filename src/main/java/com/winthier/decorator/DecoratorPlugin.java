@@ -559,9 +559,12 @@ public final class DecoratorPlugin extends JavaPlugin {
     void onTick() {
         if (paused) return;
         if (!runQueue.isEmpty()) {
-            Runnable run = runQueue.remove(0);
-            run.run();
-            return;
+            long now = System.currentTimeMillis();
+            do {
+                Runnable run = runQueue.remove(0);
+                run.run();
+                if (System.currentTimeMillis() - now >= 50) break;
+            } while (!runQueue.isEmpty());
         }
         if (regions == null || chunks == null) return;
         if (tickCooldown > 0) {
