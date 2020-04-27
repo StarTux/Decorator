@@ -150,14 +150,15 @@ public final class DecoratorPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         saveTodo();
-        for (Runnable run : runQueue) {
+        List<Runnable> copy = new ArrayList<>(runQueue);
+        runQueue.clear();
+        for (Runnable run : copy) {
             try {
                 run.run();
             } catch (Throwable t) {
                 getLogger().log(Level.SEVERE, "Clearning RunQueue onDisable", t);
             }
         }
-        runQueue.clear();
     }
 
     @Override
@@ -652,13 +653,14 @@ public final class DecoratorPlugin extends JavaPlugin {
 
     void onPluginDisable(Plugin plugin) {
         if (plugin.equals(this)) return;
-        for (Runnable run : runQueue) {
+        List<Runnable> copy = new ArrayList<>(runQueue);
+        runQueue.clear();
+        for (Runnable run : copy) {
             try {
                 run.run();
             } catch (Throwable t) {
                 getLogger().log(Level.SEVERE, "Clearing RunQueue onPluginDisable", t);
             }
         }
-        runQueue.clear();
     }
 }
