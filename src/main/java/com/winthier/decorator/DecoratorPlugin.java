@@ -24,6 +24,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class DecoratorPlugin extends JavaPlugin {
@@ -153,7 +154,7 @@ public final class DecoratorPlugin extends JavaPlugin {
             try {
                 run.run();
             } catch (Throwable t) {
-                getLogger().log(Level.SEVERE, "RunQueue", t);
+                getLogger().log(Level.SEVERE, "Clearning RunQueue onDisable", t);
             }
         }
         runQueue.clear();
@@ -644,5 +645,17 @@ public final class DecoratorPlugin extends JavaPlugin {
         int percent = total > 0 ? d * 100 / total : 0;
         getLogger().info(String.format("%d/%d Regions done (%d%%), %d chunks",
                                        d, total, percent, done));
+    }
+
+    void onPluginDisable(Plugin plugin) {
+        if (plugin.equals(this)) return;
+        for (Runnable run : runQueue) {
+            try {
+                run.run();
+            } catch (Throwable t) {
+                getLogger().log(Level.SEVERE, "Clearing RunQueue onPluginDisable", t);
+            }
+        }
+        runQueue.clear();
     }
 }
