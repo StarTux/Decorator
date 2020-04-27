@@ -559,6 +559,10 @@ public final class DecoratorPlugin extends JavaPlugin {
 
     void onTick() {
         if (paused) return;
+        if (tickCooldown > 0) {
+            tickCooldown -= 1;
+            return;
+        }
         // Validate world
         if (world == null) {
             if (worldName == null) return;
@@ -575,10 +579,6 @@ public final class DecoratorPlugin extends JavaPlugin {
             } while (!runQueue.isEmpty());
         }
         if (regions == null || chunks == null) return;
-        if (tickCooldown > 0) {
-            tickCooldown -= 1;
-            return;
-        }
         // Set tickCooldown
         if (freeMem() < (long) (1024 * 1024 * memoryThreshold)) {
             getLogger().info("Low on memory. Waiting " + memoryWaitTime + " seconds...");
@@ -608,6 +608,8 @@ public final class DecoratorPlugin extends JavaPlugin {
     }
 
     void onChunkPopulate(Chunk chunk) {
+        if (paused) return;
+        if (tickCooldown > 0) return;
         if (regions == null || chunks == null) return;
         if (world == null) return;
         if (!world.equals(chunk.getWorld())) return;
@@ -657,6 +659,8 @@ public final class DecoratorPlugin extends JavaPlugin {
     }
 
     void onPluginDisable(Plugin plugin) {
+        tickCooldown = Math.max(200, tickCooldown);
+        getLogger().info("Detecting plugin disable. Clearing RunQueue and pausing 10s.");
         if (plugin.equals(this)) return;
         List<Runnable> copy = new ArrayList<>(runQueue);
         runQueue.clear();
