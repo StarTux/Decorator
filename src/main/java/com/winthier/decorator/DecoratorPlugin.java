@@ -559,12 +559,19 @@ public final class DecoratorPlugin extends JavaPlugin {
 
     void onTick() {
         if (paused) return;
+        // Validate world
+        if (world == null) {
+            if (worldName == null) return;
+            world = getServer().getWorld(worldName);
+            return;
+        }
+        // Work run queue
+        long start = System.currentTimeMillis();
         if (!runQueue.isEmpty()) {
-            long now = System.currentTimeMillis();
             do {
                 Runnable run = runQueue.remove(0);
                 run.run();
-                if (System.currentTimeMillis() - now >= 50) return;
+                if (System.currentTimeMillis() - start >= 50) return;
             } while (!runQueue.isEmpty());
         }
         if (regions == null || chunks == null) return;
@@ -579,10 +586,6 @@ public final class DecoratorPlugin extends JavaPlugin {
             System.gc();
             return;
         }
-        // Validate world
-        if (world == null && worldName == null) return;
-        if (world == null) world = getServer().getWorld(worldName);
-        if (world == null) return;
         // Spawn fake players
         final int playerCount = getServer().getOnlinePlayers().size();
         if (mcProtocolLib != null && fakeCooldown <= 0 && playerCount < fakePlayers) {
@@ -595,10 +598,12 @@ public final class DecoratorPlugin extends JavaPlugin {
             saveTodo();
             return;
         }
+        if (System.currentTimeMillis() - start >= 50) return;
         //
         for (Player player: getServer().getOnlinePlayers()) {
             if (chunks.isEmpty()) break;
             tickPlayer(player);
+            if (System.currentTimeMillis() - start >= 50) break;
         }
     }
 
