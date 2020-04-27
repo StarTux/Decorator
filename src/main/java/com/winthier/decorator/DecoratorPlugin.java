@@ -53,6 +53,7 @@ public final class DecoratorPlugin extends JavaPlugin {
     private int fakeCount = (int) System.nanoTime() % 10000;
     private int fakeCooldown;
     private int previousChunks = 0;
+    private List<Runnable> runQueue = new ArrayList<>();
     // Components
     static final String META = "decorator:meta";
     MCProtocolLib mcProtocolLib = new MCProtocolLib();
@@ -528,7 +529,7 @@ public final class DecoratorPlugin extends JavaPlugin {
         final int x = (nextChunk.x << 4) + 8;
         final int z = (nextChunk.z << 4) + 8;
         world.getChunkAtAsync(nextChunk.x, nextChunk.z, true, chunk -> {
-                getServer().getScheduler().runTask(this, () -> DecoratorEvent.call(chunk));
+                runQueue.add(() -> DecoratorEvent.call(chunk));
                 player.setGameMode(GameMode.CREATIVE);
                 player.setAllowFlight(true);
                 player.setFlying(true);
@@ -546,6 +547,11 @@ public final class DecoratorPlugin extends JavaPlugin {
 
     void onTick() {
         if (paused || regions == null || chunks == null) return;
+        if (!runQueue.isEmpty()) {
+            Runnable run = runQueue.remove(0);
+            run.run();
+            return;
+        }
         if (tickCooldown > 0) {
             tickCooldown -= 1;
             return;
@@ -586,7 +592,7 @@ public final class DecoratorPlugin extends JavaPlugin {
         if (!world.equals(chunk.getWorld())) return;
         Vec vec = new Vec(chunk.getX(), chunk.getZ());
         if (!chunks.contains(vec)) return;
-        getServer().getScheduler().runTask(this, () -> DecoratorEvent.call(chunk));
+        runQueue.add(() -> DecoratorEvent.call(chunk));
         // Find causing player
         Player causingPlayer = null;
         int causingPlayerDist = 0;
