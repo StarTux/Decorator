@@ -15,6 +15,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.logging.Level;
 import org.bukkit.Chunk;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -148,6 +149,14 @@ public final class DecoratorPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         saveTodo();
+        for (Runnable run : runQueue) {
+            try {
+                run.run();
+            } catch (Throwable t) {
+                getLogger().log(Level.SEVERE, "RunQueue", t);
+            }
+        }
+        runQueue.clear();
     }
 
     @Override
@@ -246,6 +255,7 @@ public final class DecoratorPlugin extends JavaPlugin {
                     }
                 }
                 sender.sendMessage("Free: " + (freeMem() / 1024 / 1024) + " MiB");
+                sender.sendMessage("Run Queue: " + runQueue.size() + " task(s)");
                 if (paused) sender.sendMessage("Paused");
                 return true;
             }
@@ -412,7 +422,7 @@ public final class DecoratorPlugin extends JavaPlugin {
             chunks = null;
             saveTodo();
             getLogger().info("Done!");
-            if (batchMode) getServer().shutdown();
+            if (batchMode) runQueue.add(() -> getServer().shutdown());
             return;
         }
         Vec nextRegion = null;
@@ -546,12 +556,13 @@ public final class DecoratorPlugin extends JavaPlugin {
     }
 
     void onTick() {
-        if (paused || regions == null || chunks == null) return;
+        if (paused) return;
         if (!runQueue.isEmpty()) {
             Runnable run = runQueue.remove(0);
             run.run();
             return;
         }
+        if (regions == null || chunks == null) return;
         if (tickCooldown > 0) {
             tickCooldown -= 1;
             return;
