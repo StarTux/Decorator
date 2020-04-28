@@ -34,6 +34,7 @@ public final class DecoratorPlugin extends JavaPlugin {
     private int memoryWaitTime;
     private int fakePlayers;
     private boolean batchMode;
+    private boolean batchDone;
     // State information (todo.yml)
     private Set<Vec> chunks;
     private Set<Vec> regions;
@@ -73,8 +74,8 @@ public final class DecoratorPlugin extends JavaPlugin {
         loadTodo();
         getServer().getPluginManager().registerEvents(listener, this);
         getServer().getScheduler().runTaskTimer(this, () -> onTick(), 1, 1);
-        if (batchMode && regions == null) {
-            // Run this on the next tick so other plugins can do their setup.
+        if (regions == null && batchMode) {
+            // Delay by 1 tick so worlds can load...
             getServer().getScheduler().runTask(this, this::batchEnable);
         }
     }
@@ -98,16 +99,17 @@ public final class DecoratorPlugin extends JavaPlugin {
             } catch (IOException ioe) {
                 throw new IllegalStateException(ioe);
             }
-            String theWorldName = batch.worlds.remove(0);
             if (batch.worlds.isEmpty()) {
                 file.delete();
                 touch(new File("DONE"));
-            } else {
-                try (FileWriter fw = new FileWriter(file)) {
-                    gson.toJson(batch, fw);
-                } catch (IOException ioe) {
-                    throw new IllegalStateException(ioe);
-                }
+                batchDone = true;
+                return;
+            }
+            String theWorldName = batch.worlds.remove(0);
+            try (FileWriter fw = new FileWriter(file)) {
+                gson.toJson(batch, fw);
+            } catch (IOException ioe) {
+                getLogger().log(Level.SEVERE, "Saving batch", ioe);
             }
             World theWorld = getServer().getWorld(theWorldName);
             // Consider creating world?
@@ -116,8 +118,8 @@ public final class DecoratorPlugin extends JavaPlugin {
             }
             initWorld(theWorld, true);
         } else {
+            batchDone = true;
             touch(new File("DONE"));
-            getServer().shutdown();
             return;
         }
     }
@@ -423,8 +425,8 @@ public final class DecoratorPlugin extends JavaPlugin {
             regions = null;
             chunks = null;
             saveTodo();
-            getLogger().info("Done!");
-            if (batchMode) runQueue.add(() -> getServer().shutdown());
+            getLogger().info("World complete: " + world.getName());
+            if (batchMode) batchEnable();
             return;
         }
         Vec nextRegion = null;
@@ -563,12 +565,6 @@ public final class DecoratorPlugin extends JavaPlugin {
             tickCooldown -= 1;
             return;
         }
-        // Validate world
-        if (world == null) {
-            if (worldName == null) return;
-            world = getServer().getWorld(worldName);
-            return;
-        }
         // Work run queue
         long start = System.currentTimeMillis();
         if (!runQueue.isEmpty()) {
@@ -578,7 +574,12 @@ public final class DecoratorPlugin extends JavaPlugin {
                 if (System.currentTimeMillis() - start >= 50) return;
             } while (!runQueue.isEmpty());
         }
-        if (regions == null || chunks == null) return;
+        if (batchMode && batchDone) {
+            getLogger().info("BatchMode enabled, queue empty, and batch done. Shutting down.");
+            runQueue.add(() -> getServer().shutdown());
+            return;
+        }
+        if (world == null || regions == null || chunks == null) return;
         // Set tickCooldown
         if (freeMem() < (long) (1024 * 1024 * memoryThreshold)) {
             getLogger().info("Low on memory. Waiting " + memoryWaitTime + " seconds...");
@@ -659,9 +660,10 @@ public final class DecoratorPlugin extends JavaPlugin {
     }
 
     void onPluginDisable(Plugin plugin) {
-        tickCooldown = Math.max(200, tickCooldown);
-        getLogger().info("Detecting plugin disable. Clearing RunQueue and pausing 10s.");
         if (plugin.equals(this)) return;
+        tickCooldown = Math.max(200, tickCooldown);
+        getLogger().info("Detecting plugin disable: " + plugin.getName()
+                         + "; clearing RunQueue and pausing 10s.");
         List<Runnable> copy = new ArrayList<>(runQueue);
         runQueue.clear();
         for (Runnable run : copy) {
