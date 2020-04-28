@@ -244,6 +244,7 @@ public final class DecoratorPlugin extends JavaPlugin {
                     int d = total - regions.size();
                     int percent = total > 0 ? d * 100 / total : 0;
                     sender.sendMessage("World=" + worldName
+                                       + " (" + (world != null ? world.getName() : "null") + ")"
                                        + " AllChunks="
                                        + allChunks
                                        + " Bounds=(" + lboundx + "," + lboundz
@@ -364,6 +365,9 @@ public final class DecoratorPlugin extends JavaPlugin {
             }
         }
         worldName = config.getString("world");
+        world = worldName != null
+            ? getServer().getWorld(worldName)
+            : null;
         total = config.getInt("total");
         done = config.getInt("done");
         allChunks = config.getBoolean("all");
