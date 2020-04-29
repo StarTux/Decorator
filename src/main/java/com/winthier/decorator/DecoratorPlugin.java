@@ -144,11 +144,7 @@ public final class DecoratorPlugin extends JavaPlugin {
         memoryWaitTime = getConfig().getInt("memory-wait-time");
         millisecondsPerTick = getConfig().getLong("milliseconds-per-tick");
         batchMode = getConfig().getBoolean("batch-mode");
-        getLogger().info("Player Populate Interval: " + playerPopulateInterval + " ticks");
-        getLogger().info("Fake Players: " + fakePlayers);
-        getLogger().info("Memory Threshold: " + memoryThreshold + " MiB");
-        getLogger().info("Memory Wait Time: " + memoryWaitTime + " seconds");
-        getLogger().info("Batch mode: " + (batchMode ? "enabled" : "disabled"));
+        printInfo(getServer().getConsoleSender());
     }
 
     @Override
@@ -239,36 +235,9 @@ public final class DecoratorPlugin extends JavaPlugin {
             }
             break;
         case "info":
-            if (args.length == 1) {
-                if (chunks == null || regions == null) {
-                    sender.sendMessage("Not active");
-                } else {
-                    int d = total - regions.size();
-                    int percent = total > 0 ? d * 100 / total : 0;
-                    sender.sendMessage("World=" + worldName
-                                       + " (" + (world != null ? world.getName() : "null") + ")"
-                                       + " AllChunks="
-                                       + allChunks
-                                       + " Bounds=(" + lboundx + "," + lboundz
-                                       + ")-(" + uboundx + "," + uboundz + ")");
-                    String fmt = String.format("%d/%d Regions done (%d%%), %d chunks.",
-                                               d, total, percent, done);
-                    sender.sendMessage(fmt);
-                    if (tickCooldown > 0) sender.sendMessage("TickCooldown=" + tickCooldown);
-                    if (currentRegion != null) {
-                        fmt = String.format("Current region: %d,%d with %d chunks",
-                                            currentRegion.x, currentRegion.z, chunks.size());
-                        sender.sendMessage(fmt);
-                    }
-                }
-                sender.sendMessage("Millis/Tick: " + millisecondsPerTick);
-                sender.sendMessage("Batch: " + batchMode + " Done: " + batchDone);
-                sender.sendMessage("Free: " + (freeMem() / 1024 / 1024) + " MiB");
-                sender.sendMessage("Run Queue: " + runQueue.size() + " task(s)");
-                if (paused) sender.sendMessage("Paused");
-                return true;
-            }
-            break;
+            if (args.length != 1) return false;
+            printInfo(sender);
+            return true;
         case "players":
             if (args.length == 1) {
                 List<Player> ps = new ArrayList<>(getServer().getOnlinePlayers());
@@ -312,6 +281,40 @@ public final class DecoratorPlugin extends JavaPlugin {
             break;
         }
         return false;
+    }
+
+    void printInfo(CommandSender sender) {
+        if (chunks == null || regions == null) {
+            sender.sendMessage("Not active");
+        } else {
+            int d = total - regions.size();
+            int percent = total > 0 ? d * 100 / total : 0;
+            sender.sendMessage("World=" + worldName
+                               + " (" + (world != null ? world.getName() : "null") + ")"
+                               + " AllChunks="
+                               + allChunks
+                               + " Bounds=(" + lboundx + "," + lboundz
+                               + ")-(" + uboundx + "," + uboundz + ")");
+            String fmt = String.format("%d/%d Regions done (%d%%), %d chunks.",
+                                       d, total, percent, done);
+            sender.sendMessage(fmt);
+            if (tickCooldown > 0) sender.sendMessage("TickCooldown=" + tickCooldown);
+            if (currentRegion != null) {
+                fmt = String.format("Current region: %d,%d with %d chunks",
+                                    currentRegion.x, currentRegion.z, chunks.size());
+                sender.sendMessage(fmt);
+            }
+        }
+        sender.sendMessage("Player Populate Interval: " + playerPopulateInterval);
+        sender.sendMessage("Fake Players: " + fakePlayers);
+        sender.sendMessage("Memory Threshold: " + memoryThreshold + " MiB");
+        sender.sendMessage("Memory Wait Time: " + memoryWaitTime + " seconds");
+        sender.sendMessage("Batch mode: " + (batchMode ? "enabled" : "disabled"));
+        sender.sendMessage("Millis/Tick: " + millisecondsPerTick);
+        sender.sendMessage("Batch: " + batchMode + ", Done=" + batchDone);
+        sender.sendMessage("Free: " + (freeMem() / 1024 / 1024) + " MiB");
+        sender.sendMessage("Run Queue: " + runQueue.size() + " task(s)");
+        sender.sendMessage("Paused: " + paused);
     }
 
     void initWorld(World theWorld, boolean all) {
