@@ -33,6 +33,7 @@ public final class DecoratorPlugin extends JavaPlugin {
     private int memoryThreshold;
     private int memoryWaitTime;
     private int fakePlayers;
+    private long millisecondsPerTick;
     private boolean batchMode;
     private boolean batchDone;
     // State information (todo.yml)
@@ -141,6 +142,7 @@ public final class DecoratorPlugin extends JavaPlugin {
         fakePlayers = getConfig().getInt("fake-players");
         memoryThreshold = getConfig().getInt("memory-threshold");
         memoryWaitTime = getConfig().getInt("memory-wait-time");
+        millisecondsPerTick = getConfig().getLong("milliseconds-per-tick");
         batchMode = getConfig().getBoolean("batch-mode");
         getLogger().info("Player Populate Interval: " + playerPopulateInterval + " ticks");
         getLogger().info("Fake Players: " + fakePlayers);
@@ -259,6 +261,8 @@ public final class DecoratorPlugin extends JavaPlugin {
                         sender.sendMessage(fmt);
                     }
                 }
+                sender.sendMessage("Millis/Tick: " + millisecondsPerTick);
+                sender.sendMessage("Batch: " + batchMode + " Done: " + batchDone);
                 sender.sendMessage("Free: " + (freeMem() / 1024 / 1024) + " MiB");
                 sender.sendMessage("Run Queue: " + runQueue.size() + " task(s)");
                 if (paused) sender.sendMessage("Paused");
@@ -575,7 +579,7 @@ public final class DecoratorPlugin extends JavaPlugin {
             do {
                 Runnable run = runQueue.remove(0);
                 run.run();
-                if (System.currentTimeMillis() - start >= 50) return;
+                if (System.currentTimeMillis() - start >= millisecondsPerTick) return;
             } while (!runQueue.isEmpty());
         }
         if (batchMode && batchDone) {
@@ -603,12 +607,12 @@ public final class DecoratorPlugin extends JavaPlugin {
             saveTodo();
             return;
         }
-        if (System.currentTimeMillis() - start >= 50) return;
+        if (System.currentTimeMillis() - start >= millisecondsPerTick) return;
         //
         for (Player player: getServer().getOnlinePlayers()) {
             if (chunks.isEmpty()) break;
             tickPlayer(player);
-            if (System.currentTimeMillis() - start >= 50) break;
+            if (System.currentTimeMillis() - start >= millisecondsPerTick) break;
         }
     }
 
