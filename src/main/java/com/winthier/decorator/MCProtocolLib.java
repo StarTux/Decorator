@@ -19,7 +19,7 @@ final class MCProtocolLib {
         Client client = new Client("localhost",
                                    Bukkit.getPort(),
                                    protocol,
-                                   new TcpSessionFactory(Proxy.NO_PROXY));
+                                   new TcpSessionFactory(null));
         client.getSession().setFlag(MinecraftConstants.AUTH_PROXY_KEY, Proxy.NO_PROXY);
         client.getSession().addListener(new SessionAdapter() {
             @Override
@@ -30,8 +30,8 @@ final class MCProtocolLib {
             }
             @Override
             public void disconnected(DisconnectedEvent event) {
-                System.out.println("Disconnected: "
-                                   + Message.fromString(event.getReason()).getFullText());
+                // System.out.println("Disconnected: "
+                //                    + Message.fromString(event.getReason()).getFullText());
                 if (event.getCause() != null) {
                     event.getCause().printStackTrace();
                 }

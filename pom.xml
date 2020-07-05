@@ -49,7 +49,7 @@
     <dependency>
       <groupId>com.github.steveice10</groupId>
       <artifactId>mcprotocollib</artifactId>
-      <version>1.15.2-1-SNAPSHOT</version>
+      <version>1.16.1-SNAPSHOT</version>
       <scope>compile</scope>
     </dependency>
 
@@ -65,7 +65,7 @@
     <dependency>
       <groupId>com.github.steveice10</groupId>
       <artifactId>packetlib</artifactId>
-      <version>1.5-SNAPSHOT</version>
+      <version>1.7-SNAPSHOT</version>
       <scope>compile</scope>
     </dependency>
 
@@ -73,7 +73,7 @@
     <dependency>
       <groupId>com.github.steveice10</groupId>
       <artifactId>mcauthlib</artifactId>
-      <version>1.2-SNAPSHOT</version>
+      <version>1.4-SNAPSHOT</version>
       <scope>compile</scope>
     </dependency>
 
