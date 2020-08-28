@@ -272,7 +272,7 @@ public final class DecoratorPlugin extends JavaPlugin {
             break;
         case "fake":
             if (args.length == 2) {
-                mcProtocolLib.spawnFakePlayer(args[1]);
+                mcProtocolLib.spawnFakePlayer(this, args[1]);
                 sender.sendMessage("Fake user logged in.");
                 return true;
             }
@@ -601,7 +601,7 @@ public final class DecoratorPlugin extends JavaPlugin {
         // Spawn fake players
         final int playerCount = getServer().getOnlinePlayers().size();
         if (mcProtocolLib != null && fakeCooldown <= 0 && playerCount < fakePlayers) {
-            mcProtocolLib.spawnFakePlayer("fake" + fakeCount++);
+            mcProtocolLib.spawnFakePlayer(this, "fake" + fakeCount++);
             fakeCooldown = 20;
         }
         if (fakeCooldown > 0) fakeCooldown -= 1;

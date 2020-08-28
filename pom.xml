@@ -32,7 +32,7 @@
     <dependency>
       <groupId>com.destroystokyo.paper</groupId>
       <artifactId>paper-api</artifactId>
-      <version>1.16.1-R0.1-SNAPSHOT</version>
+      <version>1.16.2-R0.1-SNAPSHOT</version>
       <scope>provided</scope>
       <optional>true</optional>
     </dependency>
@@ -49,7 +49,7 @@
     <dependency>
       <groupId>com.github.steveice10</groupId>
       <artifactId>mcprotocollib</artifactId>
-      <version>1.16.1-SNAPSHOT</version>
+      <version>1.16.2-SNAPSHOT</version>
       <scope>compile</scope>
     </dependency>
 
@@ -139,6 +139,7 @@
                   <artifact>com.github.steveice10:mcauthlib</artifact>
                   <includes>
                     <include>com/github/steveice10/**</include>
+                    <include>yggdrasil_session_pubkey.der</include>
                   </includes>
                 </filter>
               </filters>
