@@ -19,7 +19,7 @@ final class MCProtocolLib {
         final int port = Bukkit.getPort();
         plugin.getLogger().info("Spawn fake player: " + host + ":" + port);
         Client client = new Client(host, port, protocol, new TcpSessionFactory(null)); // no proxy
-        client.getSession().setFlag(MinecraftConstants.AUTH_PROXY_KEY, Proxy.NO_PROXY);
+        client.getSession().setFlag(MinecraftConstants.SESSION_SERVICE_KEY, Proxy.NO_PROXY);
         client.getSession().addListener(new SessionAdapter() {
             @Override
             public void packetReceived(PacketReceivedEvent event) {
