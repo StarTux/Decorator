@@ -1,19 +1,26 @@
 package com.winthier.decorator;
 
+import com.cavetale.dirty.Dirty;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.logging.Level;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.block.Biome;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -35,6 +42,8 @@ public final class DecoratorPlugin extends JavaPlugin {
     long start; // timing
     // Non-persistent state
     World world;
+    PrintStream biomesFile;
+    PrintStream structuresFile;
     transient Vec currentRegion = new Vec(0, 0);
     transient Vec pivotRegion = new Vec(0, 0);
     int fakeCount = (int) System.nanoTime() % 10000;
@@ -79,6 +88,14 @@ public final class DecoratorPlugin extends JavaPlugin {
             } catch (Throwable t) {
                 getLogger().log(Level.SEVERE, "Clearning RunQueue onDisable", t);
             }
+        }
+        if (biomesFile != null) {
+            biomesFile.close();
+            biomesFile = null;
+        }
+        if (structuresFile != null) {
+            structuresFile.close();
+            structuresFile = null;
         }
     }
 
@@ -271,6 +288,27 @@ public final class DecoratorPlugin extends JavaPlugin {
                 meta.populateCooldown = playerPopulateInterval;
                 meta.warpLocation = location;
                 meta.warping = false;
+                // Biomes
+                if (biomesFile != null) {
+                    Set<Biome> biomes = EnumSet.noneOf(Biome.class);
+                    for (int bz = 0; bz < 16; bz += 1) {
+                        for (int bx = 0; bx < 16; bx += 1) {
+                            biomes.add(chunk.getBlock(bx, 65, bz).getBiome());
+                        }
+                    }
+                    biomesFile.print(chunk.getX() + "," + chunk.getZ());
+                    for (Biome biome : biomes) {
+                        biomesFile.print("," + biome);
+                    }
+                    biomesFile.println("");
+                }
+                // Structures
+                if (structuresFile != null) {
+                    Map<String, Map<String, Object>> structures = Dirty.getStructures(chunk);
+                    if (structures != null) {
+                        structuresFile.println(chunk.getX() + "," + chunk.getZ() + "," + json.serialize(structures));
+                    }
+                }
             });
     }
 
@@ -310,7 +348,29 @@ public final class DecoratorPlugin extends JavaPlugin {
     }
 
     void tickWorld(TodoWorld todoWorld) {
-        world = Bukkit.getWorld(todoWorld.world);
+        if (world == null || !world.getName().equals(todoWorld.world)) {
+            world = Bukkit.getWorld(todoWorld.world);
+            if (biomesFile != null) {
+                biomesFile.close();
+                biomesFile = null;
+            }
+            File file = new File(world.getWorldFolder(), "biomes.txt");
+            try {
+                biomesFile = new PrintStream(new FileOutputStream(file, true)); // true=append
+            } catch (FileNotFoundException nfe) {
+                throw new IllegalStateException(nfe);
+            }
+            if (structuresFile != null) {
+                structuresFile.close();
+                structuresFile = null;
+            }
+            file = new File(world.getWorldFolder(), "structures.txt");
+            try {
+                structuresFile = new PrintStream(new FileOutputStream(file, true)); // true=append
+            } catch (FileNotFoundException nfe) {
+                throw new IllegalStateException(nfe);
+            }
+        }
         if (world == null) throw new IllegalStateException("world = null");
         if (!todoWorld.initialized) {
             initWorld(todoWorld, world);
