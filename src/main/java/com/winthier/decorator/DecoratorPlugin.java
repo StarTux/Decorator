@@ -1,139 +1,61 @@
 package com.winthier.decorator;
 
-import com.google.gson.Gson;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.logging.Level;
+import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class DecoratorPlugin extends JavaPlugin {
+    public final Json json = new Json(this);
     // Configuration values (config.yml)
-    private int playerPopulateInterval;
-    private int memoryThreshold;
-    private int memoryWaitTime;
-    private int fakePlayers;
-    private long millisecondsPerTick;
-    private boolean batchMode;
-    private boolean batchDone;
-    // State information (todo.yml)
-    private Set<Vec> chunks;
-    private Set<Vec> regions;
-    private int total;
-    private int done;
-    private boolean paused;
-    private boolean debug;
-    private boolean allChunks;
-    private String worldName;
-    private int tickCooldown;
-    private int lboundx;
-    private int lboundz;
-    private int uboundx;
-    private int uboundz;
+    int playerPopulateInterval;
+    int memoryThreshold;
+    int memoryWaitTime;
+    int fakePlayers;
+    long millisecondsPerTick;
+    boolean batchMode;
+    // State information
+    Todo todo;
+    boolean paused;
+    boolean debug;
+    int tickCooldown;
+    long start; // timing
     // Non-persistent state
-    private World world;
-    private transient Vec currentRegion = new Vec(0, 0);
-    private transient Vec pivotRegion = new Vec(0, 0);
-    private int fakeCount = (int) System.nanoTime() % 10000;
-    private int fakeCooldown;
-    private int previousChunks = 0;
-    private List<Runnable> runQueue = new ArrayList<>();
+    World world;
+    transient Vec currentRegion = new Vec(0, 0);
+    transient Vec pivotRegion = new Vec(0, 0);
+    int fakeCount = (int) System.nanoTime() % 10000;
+    int fakeCooldown;
+    int previousChunks = 0;
+    List<Runnable> runQueue = new ArrayList<>();
     // Components
     static final String META = "decorator:meta";
     MCProtocolLib mcProtocolLib = new MCProtocolLib();
     Metadata metadata = new Metadata(this);
     EventListener listener = new EventListener(this);
-
-    class Batch {
-        List<String> worlds;
-    }
+    DecoratorCommand command;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        command = new DecoratorCommand(this).enable();
         importConfig();
         loadTodo();
         getServer().getPluginManager().registerEvents(listener, this);
-        getServer().getScheduler().runTaskTimer(this, () -> onTick(), 1, 1);
-        if (regions == null && batchMode) {
-            // Delay by 1 tick so worlds can load...
-            getServer().getScheduler().runTask(this, this::batchEnable);
-        }
-    }
-
-    /*
-     * Batch mode:
-     * If the current job is empty, try and read a new one from
-     * batch.json in the plugin folder.  If there is no such
-     * thing, shut the server down.
-     * An outside script needs to recognize the meaning of the
-     * DONE file.
-     */
-    private void batchEnable() {
-        getLogger().info("batchEnable()");
-        File file = new File(getDataFolder(), "batch.json");
-        if (file.exists()) {
-            Gson gson = new Gson();
-            Batch batch;
-            try (FileReader fr = new FileReader(file)) {
-                batch = gson.fromJson(fr, Batch.class);
-            } catch (IOException ioe) {
-                throw new IllegalStateException(ioe);
-            }
-            if (batch.worlds.isEmpty()) {
-                file.delete();
-                touch(new File("DONE"));
-                batchDone = true;
-                return;
-            }
-            String theWorldName = batch.worlds.remove(0);
-            try (FileWriter fw = new FileWriter(file)) {
-                gson.toJson(batch, fw);
-            } catch (IOException ioe) {
-                getLogger().log(Level.SEVERE, "Saving batch", ioe);
-            }
-            World theWorld = getServer().getWorld(theWorldName);
-            // Consider creating world?
-            if (theWorld == null) {
-                throw new IllegalStateException("World not found: " + theWorldName + "!");
-            }
-            initWorld(theWorld, true);
-        } else {
-            batchDone = true;
-            touch(new File("DONE"));
-            return;
-        }
-    }
-
-    void touch(File file) {
-        if (!file.exists()) {
-            try {
-                new FileOutputStream(file).close();
-            } catch (IOException ioe) {
-                ioe.printStackTrace();
-            }
-        }
-        file.setLastModified(System.currentTimeMillis());
+        getServer().getScheduler().runTaskTimer(this, this::tick, 1, 1);
     }
 
     void importConfig() {
@@ -144,7 +66,6 @@ public final class DecoratorPlugin extends JavaPlugin {
         memoryWaitTime = getConfig().getInt("memory-wait-time");
         millisecondsPerTick = getConfig().getLong("milliseconds-per-tick");
         batchMode = getConfig().getBoolean("batch-mode");
-        printInfo(getServer().getConsoleSender());
     }
 
     @Override
@@ -161,264 +82,48 @@ public final class DecoratorPlugin extends JavaPlugin {
         }
     }
 
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        final Player player = sender instanceof Player ? (Player) sender : null;
-        String cmd = args.length == 0 ? null : args[0].toLowerCase();
-        if (args.length == 0) {
-            return false;
-        }
-        switch (cmd) {
-        case "init":
-            if (args.length >= 1 && args.length <= 3) {
-                final World theWorld;
-                if (args.length >= 2) {
-                    theWorld = getServer().getWorld(args[1]);
-                    if (theWorld == null) {
-                        sender.sendMessage("World not found: " + args[1] + "!");
-                        return true;
-                    }
-                } else {
-                    theWorld = getServer().getWorlds().get(0);
-                }
-                boolean all = args.length >= 3 && args[2].equals("all");
-                try {
-                    initWorld(theWorld, all);
-                } catch (IllegalStateException ise) {
-                    sender.sendMessage("Error: " + ise.getMessage());
-                    return true;
-                }
-                sender.sendMessage("" + total + " regions scheduled.");
-                saveTodo();
-                return true;
-            }
-            break;
-        case "pause":
-            if (args.length == 1) {
-                paused = !paused;
-                if (paused) {
-                    sender.sendMessage("Decorator paused");
-                } else {
-                    sender.sendMessage("Decorator unpaused");
-                }
-                return true;
-            }
-            break;
-        case "debug":
-            if (args.length == 1) {
-                debug = !debug;
-                if (debug) {
-                    sender.sendMessage("Debug mode enabled");
-                } else {
-                    sender.sendMessage("Debug mode disabled");
-                }
-                return true;
-            }
-            break;
-        case "reload":
-            if (args.length == 1) {
-                importConfig();
-                sender.sendMessage("Config Reloaded");
-                return true;
-            }
-            break;
-        case "cancel":
-            if (args.length == 1) {
-                regions = null;
-                chunks = null;
-                total = 0;
-                done = 0;
-                world = null;
-                saveTodo();
-                sender.sendMessage("Cancelled");
-                return true;
-            }
-            break;
-        case "info":
-            if (args.length != 1) return false;
-            printInfo(sender);
-            return true;
-        case "players":
-            if (args.length == 1) {
-                List<Player> ps = new ArrayList<>(getServer().getOnlinePlayers());
-                sender.sendMessage("" + ps.size() + " Players:");
-                int i = 0;
-                for (Player p: ps) {
-                    Meta meta = metaOf(p);
-                    Location l = p.getLocation();
-                    int x = l.getBlockX();
-                    int z = l.getBlockZ();
-                    float yaw = l.getYaw();
-                    Chunk c = l.getChunk();
-                    int cx = c.getX();
-                    int cz = c.getZ();
-                    sender.sendMessage("" + ++i + "] " + p.getName()
-                                       + " loc=(" + x + "," + z + ", " + yaw + ")"
-                                       + " chunk=(" + cx + "," + cz + ")"
-                                       + " anchor=(" + meta.anchor + ")"
-                                       + " cd=" + meta.populateCooldown
-                                       + " warping=" + meta.warping);
-                }
-                return true;
-            }
-            break;
-        case "save":
-            if (args.length == 1) {
-                saveTodo();
-                if (world != null) world.save();
-                sender.sendMessage("Todo and world saved");
-                return true;
-            }
-            break;
-        case "fake":
-            if (args.length == 2) {
-                mcProtocolLib.spawnFakePlayer(this, args[1]);
-                sender.sendMessage("Fake user logged in.");
-                return true;
-            }
-            break;
-        default:
-            break;
-        }
-        return false;
-    }
-
-    void printInfo(CommandSender sender) {
-        if (chunks == null || regions == null) {
-            sender.sendMessage("Not active");
-        } else {
-            int d = total - regions.size();
-            int percent = total > 0 ? d * 100 / total : 0;
-            sender.sendMessage("World=" + worldName
-                               + " (" + (world != null ? world.getName() : "null") + ")"
-                               + " AllChunks="
-                               + allChunks
-                               + " Bounds=(" + lboundx + "," + lboundz
-                               + ")-(" + uboundx + "," + uboundz + ")");
-            String fmt = String.format("%d/%d Regions done (%d%%), %d chunks.",
-                                       d, total, percent, done);
-            sender.sendMessage(fmt);
-            if (tickCooldown > 0) sender.sendMessage("TickCooldown=" + tickCooldown);
-            if (currentRegion != null) {
-                fmt = String.format("Current region: %d,%d with %d chunks",
-                                    currentRegion.x, currentRegion.z, chunks.size());
-                sender.sendMessage(fmt);
-            }
-        }
-        sender.sendMessage("Player Populate Interval: " + playerPopulateInterval);
-        sender.sendMessage("Fake Players: " + fakePlayers);
-        sender.sendMessage("Memory Threshold: " + memoryThreshold + " MiB");
-        sender.sendMessage("Memory Wait Time: " + memoryWaitTime + " seconds");
-        sender.sendMessage("Batch mode: " + (batchMode ? "enabled" : "disabled"));
-        sender.sendMessage("Millis/Tick: " + millisecondsPerTick);
-        sender.sendMessage("Batch: " + batchMode + ", Done=" + batchDone);
-        sender.sendMessage("Free: " + (freeMem() / 1024 / 1024) + " MiB");
-        sender.sendMessage("Run Queue: " + runQueue.size() + " task(s)");
-        sender.sendMessage("Paused: " + paused);
-    }
-
-    void initWorld(World theWorld, boolean all) {
+    void initWorld(TodoWorld todoWorld, World theWorld) {
         Objects.requireNonNull(theWorld, "theWorld cannot be null");
         getLogger().info("Initializing world " + theWorld.getName() + ".");
-        world = theWorld;
-        worldName = theWorld.getName();
         double radius = theWorld.getWorldBorder().getSize() * 0.5;
         if (radius > 100000) {
             throw new IllegalStateException("World border radius too large: " + radius + "!");
         }
-        allChunks = all;
         Chunk min = theWorld.getWorldBorder().getCenter().add(-radius, 0, -radius).getChunk();
         Chunk max = theWorld.getWorldBorder().getCenter().add(radius, 0, radius).getChunk();
-        lboundx = min.getX();
-        lboundz = min.getZ();
-        uboundx = max.getX();
-        uboundz = max.getZ();
-        regions = new HashSet<>();
+        todoWorld.lboundx = min.getX();
+        todoWorld.lboundz = min.getZ();
+        todoWorld.uboundx = max.getX();
+        todoWorld.uboundz = max.getZ();
+        todoWorld.regions = new HashSet<>();
         int minX = min.getX() >> 5;
         int minZ = min.getZ() >> 5;
         int maxX = max.getX() >> 5;
         int maxZ = max.getZ() >> 5;
         for (int z = minZ + 1; z <= maxZ; z += 1) {
             for (int x = minX; x <= maxX; x += 1) {
-                regions.add(new Vec(x, z));
+                todoWorld.regions.add(new Vec(x, z));
             }
         }
-        chunks = new HashSet<>();
-        total = regions.size();
-        done = 0;
+        todoWorld.chunks = new HashSet<>();
+        todoWorld.totalRegions = todoWorld.regions.size();
+        todoWorld.totalChunks = 0;
+        todoWorld.initialized = true;
         if (batchMode) {
-            getLogger().info("World " + theWorld.getName() + ": "
-                             + total + " regions scheduled.");
+            getLogger().info("World " + theWorld.getName() + ": " + todoWorld.totalRegions + " regions scheduled.");
         }
     }
 
     void loadTodo() {
-        File file = new File(getDataFolder(), "todo.yml");
-        YamlConfiguration config = YamlConfiguration.loadConfiguration(file);
-        regions = null;
-        if (config.isSet("regions")) {
-            regions = new HashSet<>();
-            Iterator<Integer> iter = config.getIntegerList("regions").iterator();
-            while (iter.hasNext()) {
-                regions.add(new Vec(iter.next(), iter.next()));
-            }
+        File file = new File(getDataFolder(), "todo.json");
+        if (!file.exists() && batchMode) {
+            saveResource("todo.json", true);
         }
-        chunks = null;
-        if (config.isSet("chunks")) {
-            chunks = new HashSet<>();
-            Iterator<Integer> iter = config.getIntegerList("chunks").iterator();
-            while (iter.hasNext()) {
-                chunks.add(new Vec(iter.next(), iter.next()));
-            }
-        }
-        worldName = config.getString("world");
-        world = worldName != null
-            ? getServer().getWorld(worldName)
-            : null;
-        total = config.getInt("total");
-        done = config.getInt("done");
-        allChunks = config.getBoolean("all");
-        List<Integer> bounds = config.getIntegerList("bounds");
-        if (bounds.size() == 4) {
-            lboundx = bounds.get(0);
-            lboundz = bounds.get(1);
-            uboundx = bounds.get(2);
-            uboundz = bounds.get(3);
-        }
-        if (chunks != null && regions != null) {
-            getLogger().info("" + regions.size() + " regions and "
-                             + chunks.size() + " chunks loaded");
-        }
+        todo = json.load("todo.json", Todo.class, Todo::new);
     }
 
     void saveTodo() {
-        YamlConfiguration config = new YamlConfiguration();
-        config.set("world", worldName);
-        config.set("total", total);
-        config.set("done", done);
-        config.set("all", allChunks);
-        if (chunks != null) {
-            ArrayList<Integer> ls = new ArrayList<>();
-            for (Vec vec: chunks) {
-                ls.add(vec.x);
-                ls.add(vec.z);
-            }
-            config.set("chunks", ls);
-        }
-        if (regions != null) {
-            ArrayList<Integer> ls = new ArrayList<>();
-            for (Vec vec: regions) {
-                ls.add(vec.x);
-                ls.add(vec.z);
-            }
-            config.set("regions", ls);
-        }
-        config.set("bounds", Arrays.asList(lboundx, lboundz, uboundx, uboundz));
-        try {
-            config.save(new File(getDataFolder(), "todo.yml"));
-        } catch (IOException ioe) {
-            ioe.printStackTrace();
-        }
+        json.save("todo.json", todo, true);
     }
 
     long freeMem() {
@@ -426,23 +131,21 @@ public final class DecoratorPlugin extends JavaPlugin {
         return rt.freeMemory() + rt.maxMemory() - rt.totalMemory();
     }
 
-    void fetchNewChunks() {
+    void fetchNewChunks(TodoWorld todoWorld) {
         if (previousChunks > 0) {
             previousChunks = 0;
             world.save();
             Runtime.getRuntime().gc();
         }
-        if (regions.isEmpty()) {
-            regions = null;
-            chunks = null;
+        if (todoWorld.regions.isEmpty()) {
+            todoWorld.done = true;
             saveTodo();
-            getLogger().info("World complete: " + world.getName());
-            if (batchMode) batchEnable();
+            getLogger().info("World complete: " + todoWorld.world);
             return;
         }
         Vec nextRegion = null;
         int nextRegionDist = 0;
-        for (Vec vec: regions) {
+        for (Vec vec: todoWorld.regions) {
             int dist = Math.max(Math.abs(pivotRegion.x - vec.x),
                                 Math.abs(pivotRegion.z - vec.z));
             if (nextRegion == null || (dist < nextRegionDist)) {
@@ -466,13 +169,13 @@ public final class DecoratorPlugin extends JavaPlugin {
         file = new File(file, filename);
         int minX = nextRegion.x * 32;
         int minZ = nextRegion.z * 32;
-        if (allChunks || !file.exists()) {
+        if (todoWorld.allChunks || !file.exists()) {
             for (int z = 0; z < 32; z += 1) {
                 for (int x = 0; x < 32; x += 1) {
                     int cx = minX + x;
                     int cz = minZ + z;
-                    if (cx < lboundx || cx > uboundx || cz < lboundz || cz > uboundz) continue;
-                    chunks.add(new Vec(cx, cz));
+                    if (cx < todoWorld.lboundx || cx > todoWorld.uboundx || cz < todoWorld.lboundz || cz > todoWorld.uboundz) continue;
+                    todoWorld.chunks.add(new Vec(cx, cz));
                 }
             }
         } else {
@@ -482,13 +185,13 @@ public final class DecoratorPlugin extends JavaPlugin {
                     for (int x = 0; x < 32; x += 1) {
                         int cx = minX + x;
                         int cz = minZ + z;
-                        if (cx < lboundx || cx > uboundx || cz < lboundz || cz > uboundz) continue;
+                        if (cx < todoWorld.lboundx || cx > todoWorld.uboundx || cz < todoWorld.lboundz || cz > todoWorld.uboundz) continue;
                         int o1 = fis.read();
                         int o2 = fis.read();
                         int o3 = fis.read();
                         int sc = fis.read();
                         if ((o1 == 0 && o2 == 0 && o3 == 0) || sc == 0) {
-                            chunks.add(new Vec(cx, cz));
+                            todoWorld.chunks.add(new Vec(cx, cz));
                         }
                     }
                 }
@@ -505,16 +208,17 @@ public final class DecoratorPlugin extends JavaPlugin {
                 return;
             }
         }
-        regions.remove(nextRegion);
+        todoWorld.totalChunks = todoWorld.chunks.size();
+        todoWorld.regions.remove(nextRegion);
         int dist = Math.max(Math.abs(currentRegion.x - pivotRegion.x),
                             Math.abs(currentRegion.z - pivotRegion.z));
         if (dist > 1) {
             pivotRegion = currentRegion;
         }
         currentRegion = nextRegion;
-        if (chunks.size() > 0) {
-            getLogger().info("New region: " + filename + ", " + chunks.size() + " chunks.");
-            previousChunks = chunks.size();
+        if (todoWorld.chunks.size() > 0) {
+            getLogger().info("New region: " + filename + ", " + todoWorld.chunks.size() + " chunks.");
+            previousChunks = todoWorld.chunks.size();
         }
     }
 
@@ -522,7 +226,10 @@ public final class DecoratorPlugin extends JavaPlugin {
         return metadata.get(player, META, Meta.class, Meta::new);
     }
 
-    void tickPlayer(Player player) {
+    /**
+     * Here we pick a new chunk and warp the player there.
+     */
+    void tickPlayer(Player player, TodoWorld todoWorld) {
         Meta meta = metaOf(player);
         if (meta.warping) return;
         // Wait cooldown
@@ -539,7 +246,7 @@ public final class DecoratorPlugin extends JavaPlugin {
         }
         Vec nextChunk = null;
         int nextChunkDist = 0;
-        for (Vec vec: chunks) {
+        for (Vec vec: todoWorld.chunks) {
             int dist = Math.max(Math.abs(vec.x - anchor.x), Math.abs(vec.z - anchor.z));
             if (nextChunk == null || dist < nextChunkDist) {
                 nextChunk = vec;
@@ -549,7 +256,7 @@ public final class DecoratorPlugin extends JavaPlugin {
         if (nextChunkDist > 4) {
             meta.anchor = nextChunk;
         }
-        chunks.remove(nextChunk);
+        todoWorld.chunks.remove(nextChunk);
         meta.warping = true;
         final int x = (nextChunk.x << 4) + 8;
         final int z = (nextChunk.z << 4) + 8;
@@ -559,25 +266,24 @@ public final class DecoratorPlugin extends JavaPlugin {
                 player.setAllowFlight(true);
                 player.setFlying(true);
                 final int y = world.getHighestBlockYAt(x, z) + 4;
-                Location location = new Location(world,
-                                                 x, y, z,
-                                                 0.0f, 0.0f);
+                Location location = new Location(world, x, y, z, 0.0f, 0.0f);
                 player.teleport(location);
                 meta.populateCooldown = playerPopulateInterval;
                 meta.warpLocation = location;
                 meta.warping = false;
             });
-        done += 1;
     }
 
-    void onTick() {
+    void tick() {
+        if (todo == null) return;
         if (paused) return;
         if (tickCooldown > 0) {
             tickCooldown -= 1;
+            System.gc();
             return;
         }
         // Work run queue
-        long start = System.currentTimeMillis();
+        start = System.currentTimeMillis();
         if (!runQueue.isEmpty()) {
             do {
                 Runnable run = runQueue.remove(0);
@@ -585,18 +291,29 @@ public final class DecoratorPlugin extends JavaPlugin {
                 if (System.currentTimeMillis() - start >= millisecondsPerTick) return;
             } while (!runQueue.isEmpty());
         }
-        if (batchMode && batchDone) {
-            getLogger().info("BatchMode enabled, queue empty, and batch done. Shutting down.");
-            runQueue.add(() -> getServer().shutdown());
-            return;
-        }
-        if (world == null || regions == null || chunks == null) return;
         // Set tickCooldown
         if (freeMem() < (long) (1024 * 1024 * memoryThreshold)) {
             getLogger().info("Low on memory. Waiting " + memoryWaitTime + " seconds...");
             tickCooldown = 20 * memoryWaitTime;
             System.gc();
             return;
+        }
+        // Find unfinished world
+        for (TodoWorld todoWorld : todo.worlds) {
+            if (!todoWorld.done) {
+                tickWorld(todoWorld);
+                return;
+            }
+        }
+        // All done?
+        runQueue.add(() -> getServer().shutdown());
+    }
+
+    void tickWorld(TodoWorld todoWorld) {
+        world = Bukkit.getWorld(todoWorld.world);
+        if (world == null) throw new IllegalStateException("world = null");
+        if (!todoWorld.initialized) {
+            initWorld(todoWorld, world);
         }
         // Spawn fake players
         final int playerCount = getServer().getOnlinePlayers().size();
@@ -605,29 +322,28 @@ public final class DecoratorPlugin extends JavaPlugin {
             fakeCooldown = 20;
         }
         if (fakeCooldown > 0) fakeCooldown -= 1;
-        if (chunks.isEmpty()) {
-            fetchNewChunks();
+        if (todoWorld.chunks.isEmpty()) {
+            fetchNewChunks(todoWorld);
             saveTodo();
             return;
         }
-        if (System.currentTimeMillis() - start >= millisecondsPerTick) return;
         //
         for (Player player: getServer().getOnlinePlayers()) {
-            if (chunks.isEmpty()) break;
-            tickPlayer(player);
-            if (System.currentTimeMillis() - start >= millisecondsPerTick) break;
+            if (System.currentTimeMillis() - start >= millisecondsPerTick) return;
+            if (todoWorld.chunks.isEmpty()) break;
+            tickPlayer(player, todoWorld);
         }
     }
 
+    /**
+     * When a chunk is populated near a player, we refresh their
+     * cooldown, assuming that very soon, they may generate more
+     * chunks, thus should not move away from their current location.
+     */
     void onChunkPopulate(Chunk chunk) {
         if (paused) return;
         if (tickCooldown > 0) return;
-        if (regions == null || chunks == null) return;
-        if (world == null) return;
-        if (!world.equals(chunk.getWorld())) return;
         Vec vec = new Vec(chunk.getX(), chunk.getZ());
-        if (!chunks.contains(vec)) return;
-        runQueue.add(() -> DecoratorEvent.call(chunk));
         // Find causing player
         Player causingPlayer = null;
         int causingPlayerDist = 0;
@@ -645,14 +361,6 @@ public final class DecoratorPlugin extends JavaPlugin {
         }
         if (causingPlayer == null) return;
         metaOf(causingPlayer).populateCooldown = playerPopulateInterval;
-        chunks.remove(vec);
-        // Update state
-        done += 1;
-        if (done % 10000 == 0) {
-            printTodoProgressReport();
-            saveTodo();
-            world.save();
-        }
         // Debug
         if (debug) {
             String playerName = causingPlayer == null ? "N/A" : causingPlayer.getName();
@@ -661,13 +369,6 @@ public final class DecoratorPlugin extends JavaPlugin {
                              + " player=" + playerName
                              + " dist=" + causingPlayerDist);
         }
-    }
-
-    void printTodoProgressReport() {
-        int d = total - regions.size();
-        int percent = total > 0 ? d * 100 / total : 0;
-        getLogger().info(String.format("%d/%d Regions done (%d%%), %d chunks",
-                                       d, total, percent, done));
     }
 
     void onPluginDisable(Plugin plugin) {

@@ -2,6 +2,9 @@ package com.winthier.decorator;
 
 import lombok.Value;
 
+/**
+ * JSONable.
+ */
 @Value
 final class Vec {
     public static final Vec ZERO = new Vec(0, 0);

@@ -1,0 +1,16 @@
+{
+    "worlds": [
+	{
+	    "world": "mine",
+	    "allChunks": true
+	},
+	{
+	    "world": "mine_nether",
+	    "allChunks": true
+	},
+	{
+	    "world": "mine_the_end",
+	    "allChunks": true
+	}
+    ]
+}
