@@ -304,9 +304,9 @@ public final class DecoratorPlugin extends JavaPlugin {
                 }
                 // Structures
                 if (structuresFile != null) {
-                    Map<String, Map<String, Object>> structures = Dirty.getStructures(chunk);
-                    if (structures != null) {
-                        structuresFile.println(chunk.getX() + "," + chunk.getZ() + "," + json.serialize(structures));
+                    List<? extends Object> list = Dirty.getStructures(chunk);
+                    if (list != null) {
+                        structuresFile.println(chunk.getX() + "," + chunk.getZ() + "," + json.serialize(list));
                     }
                 }
             });
