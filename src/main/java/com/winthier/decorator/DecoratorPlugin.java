@@ -117,7 +117,7 @@ public final class DecoratorPlugin extends JavaPlugin {
         int minZ = min.getZ() >> 5;
         int maxX = max.getX() >> 5;
         int maxZ = max.getZ() >> 5;
-        for (int z = minZ + 1; z <= maxZ; z += 1) {
+        for (int z = minZ; z <= maxZ; z += 1) {
             for (int x = minX; x <= maxX; x += 1) {
                 todoWorld.regions.add(new Vec(x, z));
             }
