@@ -11,7 +11,6 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.logging.Level;
@@ -344,7 +343,19 @@ public final class DecoratorPlugin extends JavaPlugin {
             }
         }
         // All done?
+        touch(new File("DONE"));
         runQueue.add(() -> getServer().shutdown());
+    }
+
+    void touch(File file) {
+        if (!file.exists()) {
+            try {
+                new FileOutputStream(file).close();
+            } catch (IOException ioe) {
+                ioe.printStackTrace();
+            }
+        }
+        file.setLastModified(System.currentTimeMillis());
     }
 
     void tickWorld(TodoWorld todoWorld) {
