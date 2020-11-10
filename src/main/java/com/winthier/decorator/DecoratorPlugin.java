@@ -88,6 +88,10 @@ public final class DecoratorPlugin extends JavaPlugin {
                 getLogger().log(Level.SEVERE, "Clearning RunQueue onDisable", t);
             }
         }
+        closeAllFiles();
+    }
+
+    void closeAllFiles() {
         if (biomesFile != null) {
             biomesFile.close();
             biomesFile = null;
@@ -342,7 +346,18 @@ public final class DecoratorPlugin extends JavaPlugin {
                 return;
             }
         }
-        // All done?
+        closeAllFiles();
+        if (todo.postWorlds != null && !todo.postWorlds.isEmpty()) {
+            String postWorld = todo.postWorlds.get(0);
+            World theWorld = Bukkit.getWorld(postWorld);
+            if (theWorld != null && !DecoratorPostWorldEvent.call(theWorld)) return;
+            // Not cancelled. World is done!
+            todo.postWorlds.remove(postWorld);
+            saveTodo();
+            getLogger().info("PostWorld done: " + postWorld);
+            return;
+        }
+        // All done.
         touch(new File("DONE"));
         runQueue.add(() -> getServer().shutdown());
     }
