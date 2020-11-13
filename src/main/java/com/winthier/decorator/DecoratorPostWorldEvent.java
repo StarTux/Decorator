@@ -18,10 +18,10 @@ public final class DecoratorPostWorldEvent extends Event implements Cancellable 
     @Getter private final World world;
     @Getter @Setter private boolean cancelled;
 
-    static boolean call(World world) {
+    static DecoratorPostWorldEvent call(World world) {
         DecoratorPostWorldEvent event = new DecoratorPostWorldEvent(world);
         Bukkit.getServer().getPluginManager().callEvent(event);
-        return !event.cancelled;
+        return event;
     }
 
     // Event Stuff

@@ -350,7 +350,10 @@ public final class DecoratorPlugin extends JavaPlugin {
         if (todo.postWorlds != null && !todo.postWorlds.isEmpty()) {
             String postWorld = todo.postWorlds.get(0);
             World theWorld = Bukkit.getWorld(postWorld);
-            if (theWorld != null && !DecoratorPostWorldEvent.call(theWorld)) return;
+            if (theWorld != null) {
+                DecoratorPostWorldEvent event = DecoratorPostWorldEvent.call(theWorld);
+                if (event.isCancelled()) return;
+            }
             // Not cancelled. World is done!
             todo.postWorlds.remove(postWorld);
             saveTodo();
