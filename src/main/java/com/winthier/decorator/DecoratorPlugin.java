@@ -436,8 +436,9 @@ public final class DecoratorPlugin extends JavaPlugin {
         // Find causing player
         Player causingPlayer = null;
         int causingPlayerDist = 0;
-        int viewDistance = world.getViewDistance();
-        for (Player player: world.getPlayers()) {
+        World theWorld = chunk.getWorld();
+        int viewDistance = theWorld.getViewDistance();
+        for (Player player: theWorld.getPlayers()) {
             Chunk pc = player.getLocation().getChunk();
             int dist = Math.max(Math.abs(vec.x - pc.getX()), Math.abs(vec.z - pc.getZ()));
             if (dist > viewDistance) {
