@@ -8,12 +8,15 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.GameMode;
@@ -217,12 +220,12 @@ public final class DecoratorPlugin extends JavaPlugin {
                 }
                 fis.close();
             } catch (FileNotFoundException nfne) {
-                System.err.println("File not found: " + file);
+                getLogger().warning("File not found: " + file);
                 nfne.printStackTrace();
                 paused = true;
                 return;
             } catch (IOException ioe) {
-                System.err.println("Exception reading " + file + ":");
+                getLogger().warning("Exception reading " + file + ":");
                 ioe.printStackTrace();
                 paused = true;
                 return;
@@ -293,17 +296,17 @@ public final class DecoratorPlugin extends JavaPlugin {
                 meta.warping = false;
                 // Biomes
                 if (biomesFile != null) {
-                    Set<Biome> biomes = EnumSet.noneOf(Biome.class);
+                    Map<Biome, Integer> biomes = new EnumMap<>(Biome.class);
                     for (int bz = 0; bz < 16; bz += 1) {
                         for (int bx = 0; bx < 16; bx += 1) {
-                            biomes.add(chunk.getBlock(bx, 65, bz).getBiome());
+                            biomes.compute(chunk.getBlock(bx, 65, bz).getBiome(),
+                                           (b, i) -> (i != null ? i : 0) + 1);
                         }
                     }
-                    biomesFile.print(chunk.getX() + "," + chunk.getZ());
-                    for (Biome biome : biomes) {
-                        biomesFile.print("," + biome);
-                    }
-                    biomesFile.println("");
+                    biomesFile.println(chunk.getX() + "," + chunk.getZ() + ","
+                                       + (biomes.entrySet().stream()
+                                          .map(e -> e.getKey() + ":" + e.getValue())
+                                          .collect(Collectors.joining(","))));
                 }
                 // Structures
                 if (structuresFile != null) {

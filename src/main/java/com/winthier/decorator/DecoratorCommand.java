@@ -149,8 +149,8 @@ public final class DecoratorCommand implements CommandExecutor {
             int total = todoWorld.totalRegions;
             int done = total - todoWorld.regions.size();
             int percent = total > 0 ? done * 100 / total : 0;
-            String fmt = String.format("%d/%d regions (%d%%), %d/%d chunks.",
-                                       done, total, percent,
+            String fmt = String.format("%s %d/%d regions (%d%%), %d/%d chunks.",
+                                       todoWorld.world, done, total, percent,
                                        todoWorld.totalChunks - todoWorld.chunks.size(),
                                        todoWorld.totalChunks);
             sender.sendMessage(fmt);
