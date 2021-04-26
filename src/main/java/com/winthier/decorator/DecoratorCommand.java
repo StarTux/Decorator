@@ -155,20 +155,22 @@ public final class DecoratorCommand implements CommandExecutor {
                                        todoWorld.totalChunks);
             sender.sendMessage(fmt);
         }
-        sender.sendMessage("TickCooldown=" + plugin.tickCooldown);
         if (plugin.currentRegion != null) {
-            String fmt = String.format("Current region: %d,%d", plugin.currentRegion.x, plugin.currentRegion.z);
+            String fmt = String.format("Current region: %s %d %d",
+                                       (plugin.world != null ? plugin.world.getName() : "?"),
+                                       plugin.currentRegion.x, plugin.currentRegion.z);
             sender.sendMessage(fmt);
         }
-        sender.sendMessage("Player Populate Interval: " + plugin.playerPopulateInterval);
-        sender.sendMessage("Fake Players: " + plugin.fakePlayers);
-        sender.sendMessage("Memory Threshold: " + plugin.memoryThreshold + " MiB");
-        sender.sendMessage("Memory Wait Time: " + plugin.memoryWaitTime + " seconds");
-        sender.sendMessage("Batch mode: " + (plugin.batchMode ? "enabled" : "disabled"));
-        sender.sendMessage("Millis/Tick: " + plugin.millisecondsPerTick);
-        sender.sendMessage("Batch: " + plugin.batchMode);
-        sender.sendMessage("Free: " + (plugin.freeMem() / 1024 / 1024) + " MiB");
-        sender.sendMessage("Run Queue: " + plugin.runQueue.size() + " task(s)");
-        sender.sendMessage("Paused: " + plugin.paused);
+        sender.sendMessage("TickCooldown=" + plugin.tickCooldown
+                           + " PlayerPopulateInterval=" + plugin.playerPopulateInterval
+                           + " FakePlayers=" + plugin.fakePlayers
+                           + " MemoryThreshold=" + plugin.memoryThreshold + "MiB"
+                           + " MemoryWaitTime=" + plugin.memoryWaitTime + "s"
+                           + " BatchMode=" + (plugin.batchMode ? "enabled" : "disabled")
+                           + " Millis/Tick=" + plugin.millisecondsPerTick
+                           + " Batch=" + plugin.batchMode
+                           + " Free=" + (plugin.freeMem() / 1024 / 1024) + "MiB"
+                           + " RunQueue=" + plugin.runQueue.size()
+                           + " Paused=" + plugin.paused);
     }
 }
