@@ -307,7 +307,7 @@ public final class DecoratorPlugin extends JavaPlugin {
                                           .collect(Collectors.joining(","))));
                 }
                 // Structures
-                if (structuresFile != null) {
+                if (false && structuresFile != null) { // TODO fix Dirty
                     List<? extends Object> list = Dirty.getStructures(chunk);
                     if (list != null) {
                         structuresFile.println(chunk.getX() + "," + chunk.getZ() + "," + json.serialize(list));

@@ -2,11 +2,10 @@ package com.winthier.decorator;
 
 import com.github.steveice10.mc.protocol.MinecraftProtocol;
 import com.github.steveice10.mc.protocol.packet.ingame.server.ServerJoinGamePacket;
-import com.github.steveice10.packetlib.Client;
 import com.github.steveice10.packetlib.event.session.DisconnectedEvent;
 import com.github.steveice10.packetlib.event.session.PacketReceivedEvent;
 import com.github.steveice10.packetlib.event.session.SessionAdapter;
-import com.github.steveice10.packetlib.tcp.TcpSessionFactory;
+import com.github.steveice10.packetlib.tcp.TcpClientSession;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -16,8 +15,8 @@ final class MCProtocolLib {
         final String host = "localhost";
         final int port = Bukkit.getPort();
         plugin.getLogger().info("Spawn fake player: " + host + ":" + port);
-        Client client = new Client(host, port, protocol, new TcpSessionFactory(null)); // no proxy
-        client.getSession().addListener(new SessionAdapter() {
+        TcpClientSession client = new TcpClientSession(host, port, protocol); // no proxy
+        client.addListener(new SessionAdapter() {
             @Override
             public void packetReceived(PacketReceivedEvent event) {
                 if (event.getPacket() instanceof ServerJoinGamePacket) {
@@ -32,6 +31,6 @@ final class MCProtocolLib {
                 }
             }
         });
-        client.getSession().connect();
+        client.connect();
     }
 }
