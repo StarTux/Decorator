@@ -1,9 +1,8 @@
 package com.winthier.decorator;
 
 import com.github.steveice10.mc.protocol.MinecraftProtocol;
-import com.github.steveice10.mc.protocol.packet.ingame.server.ServerJoinGamePacket;
+import com.github.steveice10.packetlib.event.session.ConnectedEvent;
 import com.github.steveice10.packetlib.event.session.DisconnectedEvent;
-import com.github.steveice10.packetlib.event.session.PacketReceivedEvent;
 import com.github.steveice10.packetlib.event.session.SessionAdapter;
 import com.github.steveice10.packetlib.tcp.TcpClientSession;
 import org.bukkit.Bukkit;
@@ -18,10 +17,8 @@ final class MCProtocolLib {
         TcpClientSession client = new TcpClientSession(host, port, protocol); // no proxy
         client.addListener(new SessionAdapter() {
             @Override
-            public void packetReceived(PacketReceivedEvent event) {
-                if (event.getPacket() instanceof ServerJoinGamePacket) {
-                    plugin.getLogger().info(username + " just logged in");
-                }
+            public void connected(ConnectedEvent event) {
+                plugin.getLogger().info(username + " just logged in");
             }
             @Override
             public void disconnected(DisconnectedEvent event) {
