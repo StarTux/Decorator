@@ -2,14 +2,17 @@
     "worlds": [
 	{
 	    "world": "mine",
+	    "passes": 2,
 	    "allChunks": true
 	},
 	{
 	    "world": "mine_nether",
+	    "passes": 1,
 	    "allChunks": true
 	},
 	{
 	    "world": "mine_the_end",
+	    "passes": 1,
 	    "allChunks": true
 	}
     ]

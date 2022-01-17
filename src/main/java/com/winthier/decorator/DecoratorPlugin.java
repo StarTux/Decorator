@@ -129,6 +129,7 @@ public final class DecoratorPlugin extends JavaPlugin {
         todoWorld.chunks = new HashSet<>();
         todoWorld.totalRegions = todoWorld.regions.size();
         todoWorld.totalChunks = 0;
+        todoWorld.pass += 1;
         todoWorld.initialized = true;
         if (batchMode) {
             getLogger().info("World " + theWorld.getName() + ": " + todoWorld.totalRegions + " regions scheduled.");
@@ -159,9 +160,14 @@ public final class DecoratorPlugin extends JavaPlugin {
             Runtime.getRuntime().gc();
         }
         if (todoWorld.regions.isEmpty()) {
-            todoWorld.done = true;
+            if (todoWorld.pass < todoWorld.passes) {
+                initWorld(todoWorld, world);
+                getLogger().info(todoWorld.world + ": Pass " + todoWorld.pass);
+            } else {
+                todoWorld.done = true;
+                getLogger().info(todoWorld.world + ": World complete");
+            }
             saveTodo();
-            getLogger().info("World complete: " + todoWorld.world);
             return;
         }
         Vec nextRegion = null;
@@ -282,7 +288,7 @@ public final class DecoratorPlugin extends JavaPlugin {
         final int x = (nextChunk.x << 4) + 8;
         final int z = (nextChunk.z << 4) + 8;
         world.getChunkAtAsync(nextChunk.x, nextChunk.z, true, chunk -> {
-                runQueue.add(() -> DecoratorEvent.call(chunk));
+                runQueue.add(() -> DecoratorEvent.call(chunk, todoWorld.pass));
                 player.setGameMode(GameMode.CREATIVE);
                 player.setAllowFlight(true);
                 player.setFlying(true);

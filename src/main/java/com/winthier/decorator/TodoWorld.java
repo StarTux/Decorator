@@ -15,6 +15,8 @@ public final class TodoWorld {
     int totalChunks;
     boolean initialized;
     boolean done;
+    int pass;
+    int passes;
     boolean allChunks;
     // WorldBorder
     int lboundx;

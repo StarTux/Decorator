@@ -17,9 +17,10 @@ import org.bukkit.event.HandlerList;
 @RequiredArgsConstructor
 public final class DecoratorEvent extends Event {
     @Getter private final Chunk chunk;
+    @Getter private final int pass;
 
-    static void call(Chunk chunk) {
-        DecoratorEvent event = new DecoratorEvent(chunk);
+    static void call(Chunk chunk, int pass) {
+        DecoratorEvent event = new DecoratorEvent(chunk, pass);
         Bukkit.getServer().getPluginManager().callEvent(event);
     }
 
