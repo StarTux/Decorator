@@ -25,6 +25,7 @@
       <url>https://papermc.io/repo/repository/maven-public/</url>
     </repository>
 
+    <!-- MCProtocolLib -->
     <repository>
       <id>jitpack.io</id>
       <url>https://jitpack.io</url>
@@ -37,7 +38,7 @@
     <dependency>
       <groupId>io.papermc.paper</groupId>
       <artifactId>paper-api</artifactId>
-      <version>1.18.1-R0.1-SNAPSHOT</version>
+      <version>1.18.2-R0.1-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>
 
@@ -49,37 +50,41 @@
       <scope>compile</scope>
     </dependency>
 
-    <!-- MCProtocolLib -->
+    <!-- MCProtocolLib https://github.com/GeyserMC/MCProtocolLib
+    -->
     <dependency>
       <groupId>com.github.steveice10</groupId>
       <artifactId>mcprotocollib</artifactId>
-      <version>1.18-2</version>
+      <version>1.18-3</version>
       <scope>compile</scope>
     </dependency>
 
-    <!-- OpenNBT -->
+    <!-- OpenNBT
     <dependency>
       <groupId>com.github.steveice10</groupId>
       <artifactId>opennbt</artifactId>
-      <version>1.4</version> <!-- Copied from MCProtocolLib -->
+      <version>1.4</version> Copied from MCProtocolLib
       <scope>compile</scope>
     </dependency>
+    -->
 
-    <!-- PacketLib -->
+    <!-- PacketLib
     <dependency>
       <groupId>com.github.steveice10</groupId>
       <artifactId>packetlib</artifactId>
-      <version>2.1</version> <!-- Copied from MCProtocolLib -->
+      <version>2.1</version> Copied from MCProtocolLib
       <scope>compile</scope>
     </dependency>
+    -->
 
-    <!-- MCAuthLib -->
+    <!-- MCAuthLib
     <dependency>
       <groupId>com.github.steveice10</groupId>
       <artifactId>mcauthlib</artifactId>
-      <version>6f3d6aada5</version> <!-- Copied from MCProtocolLib -->
+      <version>6f3d6aada5</version> Copied from MCProtocolLib
       <scope>compile</scope>
     </dependency>
+    -->
 
     <!-- Dirty -->
     <dependency>
