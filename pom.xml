@@ -59,32 +59,32 @@
       <scope>compile</scope>
     </dependency>
 
-    <!-- OpenNBT
+    <!-- OpenNBT https://github.com/GeyserMC/OpenNBT
+    -->
     <dependency>
       <groupId>com.github.steveice10</groupId>
       <artifactId>opennbt</artifactId>
-      <version>1.4</version> Copied from MCProtocolLib
+      <version>1.4</version> <!-- Copied from MCProtocolLib -->
       <scope>compile</scope>
     </dependency>
-    -->
 
-    <!-- PacketLib
+    <!-- PacketLib https://github.com/GeyserMC/PacketLib
+    -->
     <dependency>
       <groupId>com.github.steveice10</groupId>
       <artifactId>packetlib</artifactId>
-      <version>2.1</version> Copied from MCProtocolLib
+      <version>2.1</version> <!-- Copied from MCProtocolLib -->
       <scope>compile</scope>
     </dependency>
-    -->
 
-    <!-- MCAuthLib
+    <!-- MCAuthLib https://github.com/GeyserMC/MCAuthLib
+    -->
     <dependency>
       <groupId>com.github.steveice10</groupId>
       <artifactId>mcauthlib</artifactId>
-      <version>6f3d6aada5</version> Copied from MCProtocolLib
+      <version>6f3d6aada5</version> <!-- Copied from MCProtocolLib -->
       <scope>compile</scope>
     </dependency>
-    -->
 
     <!-- Dirty -->
     <dependency>
