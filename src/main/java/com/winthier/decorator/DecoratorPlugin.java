@@ -299,7 +299,7 @@ public final class DecoratorPlugin extends JavaPlugin {
                 meta.warpLocation = location;
                 meta.warping = false;
                 // Biomes
-                if (biomesFile != null) {
+                if (todoWorld.pass == 1 && biomesFile != null) {
                     Map<Biome, Integer> biomes = new EnumMap<>(Biome.class);
                     for (int bz = 0; bz < 16; bz += 1) {
                         for (int bx = 0; bx < 16; bx += 1) {
@@ -313,7 +313,7 @@ public final class DecoratorPlugin extends JavaPlugin {
                                           .collect(Collectors.joining(","))));
                 }
                 // Structures
-                if (structuresFile != null) {
+                if (todoWorld.pass == 1 && structuresFile != null) {
                     List<? extends Object> list = Dirty.getStructures(chunk);
                     if (list != null && !list.isEmpty()) {
                         structuresFile.println(chunk.getX() + "," + chunk.getZ() + "," + json.serialize(list));
