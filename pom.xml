@@ -108,14 +108,6 @@
       <scope>compile</scope>
     </dependency>
 
-    <!-- Dirty -->
-    <dependency>
-      <groupId>com.cavetale.dirty</groupId>
-      <artifactId>dirty</artifactId>
-      <version>0.1-SNAPSHOT</version>
-      <scope>provided</scope>
-    </dependency>
-
     <!-- Math -->
     <dependency>
       <groupId>com.nukkitx</groupId>

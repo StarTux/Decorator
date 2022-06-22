@@ -1,6 +1,5 @@
 package com.winthier.decorator;
 
-import com.cavetale.dirty.Dirty;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -43,7 +42,6 @@ public final class DecoratorPlugin extends JavaPlugin {
     // Non-persistent state
     World world;
     PrintStream biomesFile;
-    PrintStream structuresFile;
     transient Vec currentRegion = new Vec(0, 0);
     transient Vec pivotRegion = new Vec(0, 0);
     int fakeCount = (int) System.nanoTime() % 10000;
@@ -96,10 +94,6 @@ public final class DecoratorPlugin extends JavaPlugin {
         if (biomesFile != null) {
             biomesFile.close();
             biomesFile = null;
-        }
-        if (structuresFile != null) {
-            structuresFile.close();
-            structuresFile = null;
         }
     }
 
@@ -312,13 +306,6 @@ public final class DecoratorPlugin extends JavaPlugin {
                                           .map(e -> e.getKey() + ":" + e.getValue())
                                           .collect(Collectors.joining(","))));
                 }
-                // Structures
-                if (todoWorld.pass == 1 && structuresFile != null) {
-                    List<? extends Object> list = Dirty.getStructures(chunk);
-                    if (list != null && !list.isEmpty()) {
-                        structuresFile.println(chunk.getX() + "," + chunk.getZ() + "," + json.serialize(list));
-                    }
-                }
             });
     }
 
@@ -393,16 +380,6 @@ public final class DecoratorPlugin extends JavaPlugin {
             File file = new File(world.getWorldFolder(), "biomes.txt");
             try {
                 biomesFile = new PrintStream(new FileOutputStream(file, true)); // true=append
-            } catch (FileNotFoundException nfe) {
-                throw new IllegalStateException(nfe);
-            }
-            if (structuresFile != null) {
-                structuresFile.close();
-                structuresFile = null;
-            }
-            file = new File(world.getWorldFolder(), "structures.txt");
-            try {
-                structuresFile = new PrintStream(new FileOutputStream(file, true)); // true=append
             } catch (FileNotFoundException nfe) {
                 throw new IllegalStateException(nfe);
             }
