@@ -314,7 +314,7 @@ public final class DecoratorPlugin extends JavaPlugin {
                             final int bx = cx + dx;
                             final int bz = cz + dz;
                             final int by = world.getHighestBlockYAt(bx, bz) + 1;
-                            biomes.compute(chunk.getBlock(bx, by, bz).getBiome(),
+                            biomes.compute(chunk.getBlock(dx, by, dz).getBiome(),
                                            (b, i) -> (i != null ? i : 0) + 1);
                         }
                     }
