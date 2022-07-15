@@ -290,15 +290,18 @@ public final class DecoratorPlugin extends JavaPlugin {
         }
         todoWorld.chunks.remove(nextChunk);
         meta.warping = true;
-        final int x = (nextChunk.x << 4) + 8;
-        final int z = (nextChunk.z << 4) + 8;
+        final Vec theChunk = nextChunk;
         world.getChunkAtAsync(nextChunk.x, nextChunk.z, true, chunk -> {
                 runQueue.add(() -> DecoratorEvent.call(chunk, todoWorld.pass));
                 player.setGameMode(GameMode.CREATIVE);
                 player.setAllowFlight(true);
                 player.setFlying(true);
-                final int y = world.getHighestBlockYAt(x, z) + 4;
-                Location location = new Location(world, x, y, z, 0.0f, 0.0f);
+                final int cx = (theChunk.x << 4);
+                final int cz = (theChunk.z << 4);
+                final int px = cx + 8;
+                final int pz = cz + 8;
+                final int py = world.getHighestBlockYAt(px, pz) + 4;
+                Location location = new Location(world, px, py, pz, 0.0f, 0.0f);
                 player.teleport(location);
                 meta.populateCooldown = playerPopulateInterval;
                 meta.warpLocation = location;
@@ -306,9 +309,12 @@ public final class DecoratorPlugin extends JavaPlugin {
                 // Biomes
                 if (todoWorld.pass == 1 && biomesFile != null) {
                     Map<Biome, Integer> biomes = new EnumMap<>(Biome.class);
-                    for (int bz = 0; bz < 16; bz += 1) {
-                        for (int bx = 0; bx < 16; bx += 1) {
-                            biomes.compute(chunk.getBlock(bx, 65, bz).getBiome(),
+                    for (int dz = 0; dz < 16; dz += 1) {
+                        for (int dx = 0; dx < 16; dx += 1) {
+                            final int bx = cx + dx;
+                            final int bz = cz + dz;
+                            final int by = world.getHighestBlockYAt(bx, bz) + 1;
+                            biomes.compute(chunk.getBlock(bx, by, bz).getBiome(),
                                            (b, i) -> (i != null ? i : 0) + 1);
                         }
                     }
