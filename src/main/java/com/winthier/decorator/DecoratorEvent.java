@@ -2,7 +2,6 @@ package com.winthier.decorator;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
@@ -21,7 +20,7 @@ public final class DecoratorEvent extends Event {
 
     static void call(Chunk chunk, int pass) {
         DecoratorEvent event = new DecoratorEvent(chunk, pass);
-        Bukkit.getServer().getPluginManager().callEvent(event);
+        event.callEvent();
     }
 
     // Event Stuff

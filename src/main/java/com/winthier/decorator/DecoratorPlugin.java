@@ -78,13 +78,15 @@ public final class DecoratorPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         saveTodo();
-        List<Runnable> copy = new ArrayList<>(runQueue);
-        runQueue.clear();
-        for (Runnable run : copy) {
-            try {
-                run.run();
-            } catch (Throwable t) {
-                getLogger().log(Level.SEVERE, "Clearning RunQueue onDisable", t);
+        while (!runQueue.isEmpty()) {
+            List<Runnable> copy = new ArrayList<>(runQueue);
+            runQueue.clear();
+            for (Runnable run : copy) {
+                try {
+                    run.run();
+                } catch (Throwable t) {
+                    getLogger().log(Level.SEVERE, "Clearning RunQueue onDisable", t);
+                }
             }
         }
         closeAllFiles();
@@ -154,6 +156,15 @@ public final class DecoratorPlugin extends JavaPlugin {
             Runtime.getRuntime().gc();
         }
         if (todoWorld.regions.isEmpty()) {
+            if (todoWorld.pass == 1) {
+                try (PrintStream out = new PrintStream(new FileOutputStream("ProcessStructures", true))) {
+                    out.println(todoWorld.world);
+                } catch (IOException ioe) {
+                    ioe.printStackTrace();
+                }
+                runQueue.add(() -> getServer().shutdown());
+                getLogger().info(todoWorld.world + ": ProcessStructures scheduled");
+            }
             if (todoWorld.pass < todoWorld.passes) {
                 initWorld(todoWorld, world);
                 getLogger().info(todoWorld.world + ": Pass " + todoWorld.pass);

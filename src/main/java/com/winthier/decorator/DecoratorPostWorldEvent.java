@@ -3,7 +3,6 @@ package com.winthier.decorator;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
-import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
@@ -20,7 +19,7 @@ public final class DecoratorPostWorldEvent extends Event implements Cancellable 
 
     static DecoratorPostWorldEvent call(World world) {
         DecoratorPostWorldEvent event = new DecoratorPostWorldEvent(world);
-        Bukkit.getServer().getPluginManager().callEvent(event);
+        event.callEvent();
         return event;
     }
 
