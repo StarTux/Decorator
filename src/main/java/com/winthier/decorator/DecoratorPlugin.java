@@ -303,7 +303,7 @@ public final class DecoratorPlugin extends JavaPlugin {
                 final int cz = (theChunk.z << 4);
                 final int px = cx + 8;
                 final int pz = cz + 8;
-                final int py = world.getHighestBlockYAt(px, pz) + 4;
+                final int py = 128;
                 Location location = new Location(world, px, py, pz, 0.0f, 0.0f);
                 player.teleport(location);
                 meta.populateCooldown = playerPopulateInterval;
