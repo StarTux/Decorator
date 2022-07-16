@@ -5,7 +5,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.event.world.ChunkPopulateEvent;
 
 @RequiredArgsConstructor
@@ -20,10 +19,5 @@ public final class EventListener implements Listener {
     @EventHandler(priority = EventPriority.LOWEST)
     public void onEntityDamage(EntityDamageEvent event) {
         event.setCancelled(true);
-    }
-
-    @EventHandler
-    public void onPluginDisable(PluginDisableEvent event) {
-        plugin.onPluginDisable(event.getPlugin());
     }
 }

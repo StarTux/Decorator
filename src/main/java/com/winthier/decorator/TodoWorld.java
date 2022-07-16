@@ -14,9 +14,11 @@ public final class TodoWorld {
     int totalRegions;
     int totalChunks;
     boolean initialized;
+    boolean structures;
     boolean done;
     int pass;
     int passes;
+    int postWorld;
     boolean allChunks;
     // WorldBorder
     int lboundx;

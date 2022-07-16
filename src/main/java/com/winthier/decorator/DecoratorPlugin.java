@@ -21,7 +21,6 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Biome;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class DecoratorPlugin extends JavaPlugin {
@@ -156,23 +155,28 @@ public final class DecoratorPlugin extends JavaPlugin {
             Runtime.getRuntime().gc();
         }
         if (todoWorld.regions.isEmpty()) {
-            if (todoWorld.pass == 1) {
+            if (todoWorld.pass == 1 && !todoWorld.structures) {
+                todoWorld.structures = true;
+                saveTodo();
                 try (PrintStream out = new PrintStream(new FileOutputStream("ProcessStructures", true))) {
                     out.println(todoWorld.world);
                 } catch (IOException ioe) {
                     ioe.printStackTrace();
                 }
-                runQueue.add(() -> getServer().shutdown());
                 getLogger().info(todoWorld.world + ": ProcessStructures scheduled");
-            }
-            if (todoWorld.pass < todoWorld.passes) {
+                getServer().shutdown();
+            } else if (todoWorld.postWorld < todoWorld.pass) {
+                if (new DecoratorPostWorldEvent(world, todoWorld.pass).callEvent()) {
+                    todoWorld.postWorld = todoWorld.pass;
+                    saveTodo();
+                }
+            } else if (todoWorld.pass < todoWorld.passes) {
                 initWorld(todoWorld, world);
                 getLogger().info(todoWorld.world + ": Pass " + todoWorld.pass);
             } else {
                 todoWorld.done = true;
                 getLogger().info(todoWorld.world + ": World complete");
             }
-            saveTodo();
             return;
         }
         Vec nextRegion = null;
@@ -211,8 +215,7 @@ public final class DecoratorPlugin extends JavaPlugin {
                 }
             }
         } else {
-            try {
-                FileInputStream fis = new FileInputStream(file);
+            try (FileInputStream fis = new FileInputStream(file)) {
                 for (int z = 0; z < 32; z += 1) {
                     for (int x = 0; x < 32; x += 1) {
                         int cx = minX + x;
@@ -227,7 +230,6 @@ public final class DecoratorPlugin extends JavaPlugin {
                         }
                     }
                 }
-                fis.close();
             } catch (FileNotFoundException nfne) {
                 getLogger().warning("File not found: " + file);
                 nfne.printStackTrace();
@@ -252,6 +254,7 @@ public final class DecoratorPlugin extends JavaPlugin {
             getLogger().info("New region: " + filename + ", " + todoWorld.chunks.size() + " chunks.");
             previousChunks = todoWorld.chunks.size();
         }
+        saveTodo();
     }
 
     Meta metaOf(Player player) {
@@ -358,19 +361,6 @@ public final class DecoratorPlugin extends JavaPlugin {
             }
         }
         closeAllFiles();
-        if (todo.postWorlds != null && !todo.postWorlds.isEmpty()) {
-            String postWorld = todo.postWorlds.get(0);
-            World theWorld = Bukkit.getWorld(postWorld);
-            if (theWorld != null) {
-                DecoratorPostWorldEvent event = DecoratorPostWorldEvent.call(theWorld);
-                if (event.isCancelled()) return;
-            }
-            // Not cancelled. World is done!
-            todo.postWorlds.remove(postWorld);
-            saveTodo();
-            getLogger().info("PostWorld done: " + postWorld);
-            return;
-        }
         // All done.
         touch(new File("DONE"));
         runQueue.add(() -> getServer().shutdown());
@@ -414,7 +404,6 @@ public final class DecoratorPlugin extends JavaPlugin {
         if (fakeCooldown > 0) fakeCooldown -= 1;
         if (todoWorld.chunks.isEmpty()) {
             fetchNewChunks(todoWorld);
-            saveTodo();
             return;
         }
         //
@@ -459,22 +448,6 @@ public final class DecoratorPlugin extends JavaPlugin {
                              + " chunk=" + vec
                              + " player=" + playerName
                              + " dist=" + causingPlayerDist);
-        }
-    }
-
-    void onPluginDisable(Plugin plugin) {
-        if (plugin.equals(this)) return;
-        tickCooldown = Math.max(200, tickCooldown);
-        getLogger().info("Detecting plugin disable: " + plugin.getName()
-                         + "; clearing RunQueue and pausing 10s.");
-        List<Runnable> copy = new ArrayList<>(runQueue);
-        runQueue.clear();
-        for (Runnable run : copy) {
-            try {
-                run.run();
-            } catch (Throwable t) {
-                getLogger().log(Level.SEVERE, "Clearing RunQueue onPluginDisable", t);
-            }
         }
     }
 }

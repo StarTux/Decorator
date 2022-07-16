@@ -15,15 +15,8 @@ import org.bukkit.event.HandlerList;
 @RequiredArgsConstructor
 public final class DecoratorPostWorldEvent extends Event implements Cancellable {
     @Getter private final World world;
+    @Getter private final int pass;
     @Getter @Setter private boolean cancelled;
-
-    static DecoratorPostWorldEvent call(World world) {
-        DecoratorPostWorldEvent event = new DecoratorPostWorldEvent(world);
-        event.callEvent();
-        return event;
-    }
-
-    // Event Stuff
 
     @Getter private static HandlerList handlerList = new HandlerList();
 
