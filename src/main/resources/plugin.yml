@@ -17,13 +17,14 @@ commands:
     description: Decorator
     usage: |-
       /dec init <WORLD> (all)
-      /dec reload
-      /dec pause
-      /dec save
-      /dec cancel
-      /dec info
-      /dec fake
-      /dec players
+      /dec reload - Reload config
+      /dec pause - Pause generation
+      /dec save - Save todo and world
+      /dec cancel - Cancel generation
+      /dec info - Print generator info
+      /dec fake - Spawn fake player
+      /dec players - Print player info
+      /dec shutdown - Schedule shutdown
     permission: decorator.decorator
 
 permissions:

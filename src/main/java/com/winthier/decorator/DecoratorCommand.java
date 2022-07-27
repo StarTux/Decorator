@@ -138,6 +138,12 @@ public final class DecoratorCommand implements CommandExecutor {
                 return true;
             }
             break;
+        case "shutdown": {
+            if (args.length != 1)  return false;
+            plugin.doShutdown = true;
+            sender.sendMessage("Shutdown scheduled");
+            return true;
+        }
         default:
             break;
         }
