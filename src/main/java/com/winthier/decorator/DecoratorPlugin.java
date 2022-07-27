@@ -330,14 +330,14 @@ public final class DecoratorPlugin extends JavaPlugin {
         }
         // Work run queue
         start = System.currentTimeMillis();
-        if (chunksPending >= fakePlayers) {
-            if (start > chunksPendingCooldown) {
-                chunksPending = 0;
-            } else {
-                return;
-            }
-        }
         if (doShutdown) {
+            if (chunksPending > 0) {
+                if (start > chunksPendingCooldown) {
+                    chunksPending = 0;
+                } else {
+                    return;
+                }
+            }
             Bukkit.shutdown();
             return;
         }
