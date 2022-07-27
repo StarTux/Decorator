@@ -6,13 +6,10 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.logging.Level;
 import java.util.stream.Collectors;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
@@ -26,12 +23,12 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class DecoratorPlugin extends JavaPlugin {
     public final Json json = new Json(this);
     // Configuration values (config.yml)
-    int playerPopulateInterval;
-    int memoryThreshold;
-    int memoryWaitTime;
-    int fakePlayers;
-    long millisecondsPerTick;
-    boolean batchMode;
+    int playerPopulateInterval = 20;
+    int memoryThreshold = 32;
+    int memoryWaitTime = 30;
+    int fakePlayers = 5;
+    long millisecondsPerTick = 50;
+    boolean batchMode = false;
     // State information
     Todo todo;
     boolean paused;
@@ -46,7 +43,9 @@ public final class DecoratorPlugin extends JavaPlugin {
     int fakeCount = (int) System.nanoTime() % 10000;
     int fakeCooldown;
     int previousChunks = 0;
-    List<Runnable> runQueue = new ArrayList<>();
+    boolean doShutdown;
+    int chunksPending = 0;
+    long chunksPendingCooldown;
     // Components
     static final String META = "decorator:meta";
     MCProtocolLib mcProtocolLib = new MCProtocolLib();
@@ -77,17 +76,6 @@ public final class DecoratorPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         saveTodo();
-        while (!runQueue.isEmpty()) {
-            List<Runnable> copy = new ArrayList<>(runQueue);
-            runQueue.clear();
-            for (Runnable run : copy) {
-                try {
-                    run.run();
-                } catch (Throwable t) {
-                    getLogger().log(Level.SEVERE, "Clearning RunQueue onDisable", t);
-                }
-            }
-        }
         closeAllFiles();
     }
 
@@ -164,7 +152,7 @@ public final class DecoratorPlugin extends JavaPlugin {
                     ioe.printStackTrace();
                 }
                 getLogger().info(todoWorld.world + ": ProcessStructures scheduled");
-                getServer().shutdown();
+                doShutdown = true;
             } else if (todoWorld.postWorld < todoWorld.pass) {
                 if (new DecoratorPostWorldEvent(world, todoWorld.pass).callEvent()) {
                     todoWorld.postWorld = todoWorld.pass;
@@ -294,8 +282,11 @@ public final class DecoratorPlugin extends JavaPlugin {
         todoWorld.chunks.remove(nextChunk);
         meta.warping = true;
         final Vec theChunk = nextChunk;
+        chunksPending += 1;
+        chunksPendingCooldown = System.currentTimeMillis() + 10_000L;
         world.getChunkAtAsync(nextChunk.x, nextChunk.z, true, chunk -> {
-                runQueue.add(() -> DecoratorEvent.call(chunk, todoWorld.pass));
+                chunksPending -= 1;
+                DecoratorEvent.call(chunk, todoWorld.pass);
                 player.setGameMode(GameMode.CREATIVE);
                 player.setAllowFlight(true);
                 player.setFlying(true);
@@ -339,17 +330,22 @@ public final class DecoratorPlugin extends JavaPlugin {
         }
         // Work run queue
         start = System.currentTimeMillis();
-        if (!runQueue.isEmpty()) {
-            do {
-                Runnable run = runQueue.remove(0);
-                run.run();
-                if (System.currentTimeMillis() - start >= millisecondsPerTick) return;
-            } while (!runQueue.isEmpty());
+        if (chunksPending >= fakePlayers) {
+            if (start > chunksPendingCooldown) {
+                chunksPending = 0;
+            } else {
+                return;
+            }
+        }
+        if (doShutdown) {
+            Bukkit.shutdown();
+            return;
         }
         // Set tickCooldown
         if (freeMem() < (long) (1024 * 1024 * memoryThreshold)) {
             getLogger().info("Low on memory. Waiting " + memoryWaitTime + " seconds...");
             tickCooldown = 20 * memoryWaitTime;
+            if (world != null) world.save();
             System.gc();
             return;
         }
@@ -363,7 +359,7 @@ public final class DecoratorPlugin extends JavaPlugin {
         closeAllFiles();
         // All done.
         touch(new File("DONE"));
-        runQueue.add(() -> getServer().shutdown());
+        doShutdown = true;
     }
 
     void touch(File file) {

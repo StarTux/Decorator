@@ -172,7 +172,9 @@ public final class DecoratorCommand implements CommandExecutor {
                            + " Millis/Tick=" + plugin.millisecondsPerTick
                            + " Batch=" + plugin.batchMode
                            + " Free=" + (plugin.freeMem() / 1024 / 1024) + "MiB"
-                           + " RunQueue=" + plugin.runQueue.size()
-                           + " Paused=" + plugin.paused);
+                           + " Paused=" + plugin.paused
+                           + " Pending=" + plugin.chunksPending
+                           + "/" + (plugin.chunksPendingCooldown - System.currentTimeMillis()) + "ms"
+                           + " Shutdown=" + plugin.doShutdown);
     }
 }
