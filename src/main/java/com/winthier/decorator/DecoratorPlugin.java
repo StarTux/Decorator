@@ -7,9 +7,11 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
@@ -49,9 +51,9 @@ public final class DecoratorPlugin extends JavaPlugin {
     // Components
     static final String META = "decorator:meta";
     MCProtocolLib mcProtocolLib = new MCProtocolLib();
-    Metadata metadata = new Metadata(this);
     EventListener listener = new EventListener(this);
     DecoratorCommand command;
+    final Map<UUID, Meta> metaMap = new HashMap<>();
 
     @Override
     public void onEnable() {
@@ -246,7 +248,7 @@ public final class DecoratorPlugin extends JavaPlugin {
     }
 
     Meta metaOf(Player player) {
-        return metadata.get(player, META, Meta.class, Meta::new);
+        return metaMap.computeIfAbsent(player.getUniqueId(), u -> new Meta());
     }
 
     /**
