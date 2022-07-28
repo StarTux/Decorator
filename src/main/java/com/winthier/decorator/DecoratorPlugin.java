@@ -6,19 +6,16 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
-import org.bukkit.block.Biome;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -39,7 +36,6 @@ public final class DecoratorPlugin extends JavaPlugin {
     long start; // timing
     // Non-persistent state
     World world;
-    PrintStream biomesFile;
     transient Vec currentRegion = new Vec(0, 0);
     transient Vec pivotRegion = new Vec(0, 0);
     int fakeCount = (int) System.nanoTime() % 10000;
@@ -78,14 +74,6 @@ public final class DecoratorPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         saveTodo();
-        closeAllFiles();
-    }
-
-    void closeAllFiles() {
-        if (biomesFile != null) {
-            biomesFile.close();
-            biomesFile = null;
-        }
     }
 
     void initWorld(TodoWorld todoWorld, World theWorld) {
@@ -302,23 +290,6 @@ public final class DecoratorPlugin extends JavaPlugin {
                 meta.populateCooldown = playerPopulateInterval;
                 meta.warpLocation = location;
                 meta.warping = false;
-                // Biomes
-                if (todoWorld.pass == 1 && biomesFile != null) {
-                    Map<Biome, Integer> biomes = new EnumMap<>(Biome.class);
-                    for (int dz = 0; dz < 16; dz += 1) {
-                        for (int dx = 0; dx < 16; dx += 1) {
-                            final int bx = cx + dx;
-                            final int bz = cz + dz;
-                            final int by = world.getHighestBlockYAt(bx, bz) + 1;
-                            biomes.compute(chunk.getBlock(dx, by, dz).getBiome(),
-                                           (b, i) -> (i != null ? i : 0) + 1);
-                        }
-                    }
-                    biomesFile.println(chunk.getX() + "," + chunk.getZ() + ","
-                                       + (biomes.entrySet().stream()
-                                          .map(e -> e.getKey() + ":" + e.getValue())
-                                          .collect(Collectors.joining(","))));
-                }
             });
     }
 
@@ -358,7 +329,6 @@ public final class DecoratorPlugin extends JavaPlugin {
                 return;
             }
         }
-        closeAllFiles();
         // All done.
         touch(new File("DONE"));
         doShutdown = true;
@@ -378,16 +348,6 @@ public final class DecoratorPlugin extends JavaPlugin {
     void tickWorld(TodoWorld todoWorld) {
         if (world == null || !world.getName().equals(todoWorld.world)) {
             world = Bukkit.getWorld(todoWorld.world);
-            if (biomesFile != null) {
-                biomesFile.close();
-                biomesFile = null;
-            }
-            File file = new File(world.getWorldFolder(), "biomes.txt");
-            try {
-                biomesFile = new PrintStream(new FileOutputStream(file, true)); // true=append
-            } catch (FileNotFoundException nfe) {
-                throw new IllegalStateException(nfe);
-            }
         }
         if (world == null) throw new IllegalStateException("world = null");
         if (!todoWorld.initialized) {
