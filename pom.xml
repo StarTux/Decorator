@@ -77,7 +77,7 @@
     <dependency>
       <groupId>com.github.steveice10</groupId>
       <artifactId>mcprotocollib</artifactId>
-      <version>1.19.1-SNAPSHOT</version>
+      <version>1.19.3-SNAPSHOT</version>
       <scope>compile</scope>
     </dependency>
 
@@ -95,7 +95,7 @@
     <dependency>
       <groupId>com.github.steveice10</groupId>
       <artifactId>packetlib</artifactId>
-      <version>3.0</version> <!-- Copied from MCProtocolLib -->
+      <version>3.0.1</version> <!-- Copied from MCProtocolLib -->
       <scope>compile</scope>
     </dependency>
 
