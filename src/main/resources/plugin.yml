@@ -3,7 +3,7 @@ main: com.winthier.decorator.DecoratorPlugin
 name: Decorator
 description: Populate world chunks by teleporting players around.
 version: 0.1
-api-version: 1.19
+api-version: '1.20'
 
 author: StarTux
 website: https://github.com/StarTux/Decorator
