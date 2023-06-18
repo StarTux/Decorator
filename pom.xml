@@ -110,9 +110,25 @@
 
     <!-- Math -->
     <dependency>
-      <groupId>com.nukkitx</groupId>
-      <artifactId>math</artifactId>
-      <version>1.1.1</version>
+      <groupId>org.cloudburstmc.math</groupId>
+      <artifactId>api</artifactId>
+      <version>2.0</version>
+      <scope>compile</scope>
+    </dependency>
+
+    <!-- Immutable -->
+    <dependency>
+      <groupId>org.cloudburstmc.math</groupId>
+      <artifactId>immutable</artifactId>
+      <version>2.0</version>
+      <scope>compile</scope>
+    </dependency>
+
+    <!-- Fastutil -->
+    <dependency>
+      <groupId>com.nukkitx.fastutil</groupId>
+      <artifactId>fastutil-object-int-maps</artifactId>
+      <version>8.5.2</version>
       <scope>compile</scope>
     </dependency>
 
@@ -156,7 +172,9 @@
                   <include>com.github.steveice10:mcauthlib</include>
 		  <include>net.kyori:adventure-text-serializer-gson-legacy-impl</include>
 		  <include>net.kyori:adventure-nbt</include>
-                  <include>com.nukkitx:math</include>
+                  <include>com.nukkitx.fastutil:fastutil-object-int-maps</include>
+                  <include>org.cloudburstmc.math:api</include>
+                  <include>org.cloudburstmc.math:immutable</include>
                 </includes>
               </artifactSet>
               <filters>
