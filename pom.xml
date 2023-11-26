@@ -60,7 +60,7 @@
     <dependency>
       <groupId>io.papermc.paper</groupId>
       <artifactId>paper-api</artifactId>
-      <version>1.20.1-R0.1-SNAPSHOT</version>
+      <version>1.20.2-R0.1-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>
 
@@ -77,18 +77,18 @@
     <dependency>
       <groupId>com.github.steveice10</groupId>
       <artifactId>mcprotocollib</artifactId>
-      <version>1.20-1-SNAPSHOT</version>
+      <version>1.20-2-SNAPSHOT</version>
       <scope>compile</scope>
     </dependency>
 
     <!-- OpenNBT https://github.com/GeyserMC/OpenNBT
     -->
-    <dependency>
-      <groupId>com.github.steveice10</groupId>
-      <artifactId>opennbt</artifactId>
-      <version>1.4</version> <!-- Copied from MCProtocolLib -->
-      <scope>compile</scope>
-    </dependency>
+    <!-- <dependency> -->
+    <!--   <groupId>com.github.steveice10</groupId> -->
+    <!--   <artifactId>opennbt</artifactId> -->
+    <!--   <version>1.6</version> <!-\- Copied from MCProtocolLib -\-> -->
+    <!--   <scope>compile</scope> -->
+    <!-- </dependency> -->
 
     <!-- PacketLib https://github.com/GeyserMC/PacketLib
     -->
@@ -104,7 +104,7 @@
     <dependency>
       <groupId>com.github.steveice10</groupId>
       <artifactId>mcauthlib</artifactId>
-      <version>6f3d6aada5</version> <!-- Copied from MCProtocolLib -->
+      <version>6621fd081c</version> <!-- Copied from MCProtocolLib -->
       <scope>compile</scope>
     </dependency>
 
@@ -128,7 +128,7 @@
     <dependency>
       <groupId>com.nukkitx.fastutil</groupId>
       <artifactId>fastutil-object-int-maps</artifactId>
-      <version>8.5.2</version>
+      <version>8.5.3</version>
       <scope>compile</scope>
     </dependency>
 
