@@ -13,12 +13,6 @@
   </properties>
   <repositories>
 
-    <!-- Cavetale Repo -->
-    <repository>
-      <id>cavetale</id>
-      <url>https://cavetale.com/jenkins/plugin/repository/everything/</url>
-    </repository>
-
     <!-- Paper Repo -->
     <repository>
       <id>papermc</id>
@@ -77,18 +71,18 @@
     <dependency>
       <groupId>com.github.steveice10</groupId>
       <artifactId>mcprotocollib</artifactId>
-      <version>1.20-2-SNAPSHOT</version>
+      <version>1.20.2-1-SNAPSHOT</version>
       <scope>compile</scope>
     </dependency>
 
     <!-- OpenNBT https://github.com/GeyserMC/OpenNBT
     -->
-    <!-- <dependency> -->
-    <!--   <groupId>com.github.steveice10</groupId> -->
-    <!--   <artifactId>opennbt</artifactId> -->
-    <!--   <version>1.6</version> <!-\- Copied from MCProtocolLib -\-> -->
-    <!--   <scope>compile</scope> -->
-    <!-- </dependency> -->
+    <dependency>
+      <groupId>com.github.steveice10</groupId>
+      <artifactId>opennbt</artifactId>
+      <version>1.6</version> <!-- Copied from MCProtocolLib -->
+      <scope>compile</scope>
+    </dependency>
 
     <!-- PacketLib https://github.com/GeyserMC/PacketLib
     -->
@@ -171,13 +165,21 @@
                   <include>com.github.steveice10:packetlib</include>
                   <include>com.github.steveice10:mcauthlib</include>
 		  <include>net.kyori:adventure-text-serializer-gson-legacy-impl</include>
+		  <include>net.kyori:adventure-text-serializer-json-legacy-impl</include>
 		  <include>net.kyori:adventure-nbt</include>
                   <include>com.nukkitx.fastutil:fastutil-object-int-maps</include>
                   <include>org.cloudburstmc.math:api</include>
                   <include>org.cloudburstmc.math:immutable</include>
+		  <include>io.netty:netty-codec-dns</include>
                 </includes>
               </artifactSet>
               <filters>
+                <filter>
+                  <artifact>io.netty:netty-codec-dns</artifact>
+                  <includes>
+                    <include>io/netty/**</include>
+                  </includes>
+                </filter>
                 <filter>
                   <artifact>com.github.steveice10:mcprotocollib</artifact>
                   <includes>
@@ -206,7 +208,13 @@
                 <filter>
                   <artifact>net.kyori:adventure-text-serializer-gson-legacy-impl</artifact>
                   <includes>
-                    <include>**</include>
+                    <include>net/kyori/adventure/**</include>
+                  </includes>
+                </filter>
+                <filter>
+                  <artifact>net.kyori:adventure-text-serializer-json-legacy-impl</artifact>
+                  <includes>
+                    <include>net/kyori/adventure/**</include>
                   </includes>
                 </filter>
                 <filter>
