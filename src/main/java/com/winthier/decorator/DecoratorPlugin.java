@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Consumer;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.GameMode;
@@ -36,6 +37,7 @@ public final class DecoratorPlugin extends JavaPlugin {
     long start; // timing
     // Non-persistent state
     World world;
+    Map<Vec, Integer> chunkTickets = new HashMap<>();
     transient Vec currentRegion = new Vec(0, 0);
     transient Vec pivotRegion = new Vec(0, 0);
     int fakeCount = (int) System.nanoTime() % 10000;
@@ -271,17 +273,59 @@ public final class DecoratorPlugin extends JavaPlugin {
         }
         todoWorld.chunks.remove(nextChunk);
         meta.warping = true;
-        final Vec theChunk = nextChunk;
         chunksPending += 1;
         chunksPendingCooldown = System.currentTimeMillis() + 10_000L;
-        world.getChunkAtAsync(nextChunk.x, nextChunk.z, true, chunk -> {
+        doChunk(nextChunk, todoWorld, player, meta);
+    }
+
+    private void doChunk(final Vec vec, final TodoWorld todoWorld, final Player player, final Meta meta) {
+        ChunkLock lock = new ChunkLock();
+        lock.locks = 1;
+        for (int dx = -1; dx <= 1; dx += 1) {
+            for (int dz = -1; dz <= 1; dz += 1) {
+                lock.locks += 1;
+                loadChunk(vec.x + dx, vec.z + dz, chunk -> {
+                        lock.locks -= 1;
+                        if (lock.locks == 0) doChunkCallback(vec, todoWorld, player, meta);
+                    });
+            }
+        }
+        lock.locks -= 1;
+        if (lock.locks == 0) doChunkCallback(vec, todoWorld, player, meta);
+    }
+
+    private void loadChunk(final int x, final int z, Consumer<Chunk> callback) {
+        world.getChunkAtAsync(x, z, true, chunk -> {
+                final Vec vec = new Vec(x, z);
+                int oldTickets = chunkTickets.getOrDefault(vec, 0);
+                if (oldTickets < 0) getLogger().severe("loadChunk: Illegal chunk tickets: " + vec + " = " + oldTickets);
+                chunkTickets.put(vec, oldTickets + 1);
+                if (oldTickets == 0) chunk.addPluginChunkTicket(this);
+                callback.accept(chunk);
+            });
+    }
+
+    private void unloadChunk(final int x, final int z) {
+        final Vec vec = new Vec(x, z);
+        final int oldTickets = chunkTickets.getOrDefault(vec, 0);
+        if (oldTickets <= 0) getLogger().severe("unloadChunk: Illegal chunk tickets: " + vec + " = " + oldTickets);
+        if (oldTickets == 1) {
+            chunkTickets.remove(vec);
+            world.removePluginChunkTicket(x, z, this);
+        } else {
+            chunkTickets.put(vec, oldTickets - 1);
+        }
+    }
+
+    private void doChunkCallback(final Vec vec, final TodoWorld todoWorld, final Player player, final Meta meta) {
+        world.getChunkAtAsync(vec.x, vec.z, true, chunk -> {
                 chunksPending -= 1;
                 DecoratorEvent.call(chunk, todoWorld.pass);
                 player.setGameMode(GameMode.CREATIVE);
                 player.setAllowFlight(true);
                 player.setFlying(true);
-                final int cx = (theChunk.x << 4);
-                final int cz = (theChunk.z << 4);
+                final int cx = (vec.x << 4);
+                final int cz = (vec.z << 4);
                 final int px = cx + 8;
                 final int pz = cz + 8;
                 final int py = 128;
@@ -290,6 +334,11 @@ public final class DecoratorPlugin extends JavaPlugin {
                 meta.populateCooldown = playerPopulateInterval;
                 meta.warpLocation = location;
                 meta.warping = false;
+                for (int dx = -1; dx <= 1; dx += 1) {
+                    for (int dz = -1; dz <= 1; dz += 1) {
+                        unloadChunk(vec.x + dx, vec.z + dz);
+                    }
+                }
             });
     }
 
@@ -347,6 +396,8 @@ public final class DecoratorPlugin extends JavaPlugin {
 
     void tickWorld(TodoWorld todoWorld) {
         if (world == null || !world.getName().equals(todoWorld.world)) {
+            if (world != null) world.removePluginChunkTickets(this);
+            chunkTickets.clear();
             world = Bukkit.getWorld(todoWorld.world);
         }
         if (world == null) throw new IllegalStateException("world = null");

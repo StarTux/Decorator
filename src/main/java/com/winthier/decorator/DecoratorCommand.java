@@ -1,6 +1,7 @@
 package com.winthier.decorator;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
@@ -169,9 +170,13 @@ public final class DecoratorCommand implements CommandExecutor {
                                        plugin.currentRegion.x, plugin.currentRegion.z);
             sender.sendMessage(fmt);
         }
+        final Collection<Chunk> chunkTickets = plugin.world != null
+            ? plugin.world.getPluginChunkTickets().getOrDefault(plugin, List.of())
+            : List.of();
         sender.sendMessage("TickCooldown=" + plugin.tickCooldown
                            + " PlayerPopulateInterval=" + plugin.playerPopulateInterval
                            + " FakePlayers=" + plugin.fakePlayers
+                           + " ChunkTickets=" + chunkTickets.size() + "w/" + plugin.chunkTickets.size() + "m"
                            + " MemoryThreshold=" + plugin.memoryThreshold + "MiB"
                            + " MemoryWaitTime=" + plugin.memoryWaitTime + "s"
                            + " BatchMode=" + (plugin.batchMode ? "enabled" : "disabled")
