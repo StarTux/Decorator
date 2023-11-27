@@ -18,13 +18,6 @@ public final class DecoratorEvent extends Event {
     @Getter private final Chunk chunk;
     @Getter private final int pass;
 
-    static void call(Chunk chunk, int pass) {
-        DecoratorEvent event = new DecoratorEvent(chunk, pass);
-        event.callEvent();
-    }
-
-    // Event Stuff
-
     @Getter private static HandlerList handlerList = new HandlerList();
 
     @Override

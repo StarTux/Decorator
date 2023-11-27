@@ -320,7 +320,7 @@ public final class DecoratorPlugin extends JavaPlugin {
     private void doChunkCallback(final Vec vec, final TodoWorld todoWorld, final Player player, final Meta meta) {
         world.getChunkAtAsync(vec.x, vec.z, true, chunk -> {
                 chunksPending -= 1;
-                DecoratorEvent.call(chunk, todoWorld.pass);
+                new DecoratorEvent(chunk, todoWorld.pass).callEvent();
                 player.setGameMode(GameMode.CREATIVE);
                 player.setAllowFlight(true);
                 player.setFlying(true);
