@@ -54,7 +54,7 @@
     <dependency>
       <groupId>io.papermc.paper</groupId>
       <artifactId>paper-api</artifactId>
-      <version>1.20.4-R0.1-SNAPSHOT</version>
+      <version>1.20.6-R0.1-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>
 
@@ -62,44 +62,34 @@
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
-      <version>1.18.20</version>
+      <version>1.18.32</version>
       <scope>compile</scope>
     </dependency>
 
     <!-- MCProtocolLib https://github.com/GeyserMC/MCProtocolLib
     -->
     <dependency>
-      <groupId>com.github.steveice10</groupId>
-      <artifactId>mcprotocollib</artifactId>
-      <version>1.20.4-1-SNAPSHOT</version>
+      <groupId>org.geysermc.mcprotocollib</groupId>
+      <artifactId>protocol</artifactId>
+      <version>1.20.6-2-SNAPSHOT</version>
       <scope>compile</scope>
     </dependency>
 
-    <!-- OpenNBT https://github.com/GeyserMC/OpenNBT
+    <!-- Cloudburst NBT https://github.com/CloudburstMC/NBT
     -->
     <dependency>
-      <groupId>com.github.steveice10</groupId>
-      <artifactId>opennbt</artifactId>
-      <version>1.6</version> <!-- Copied from MCProtocolLib -->
-      <scope>compile</scope>
-    </dependency>
-
-    <!-- PacketLib https://github.com/GeyserMC/PacketLib
-	 Removed?!
-    -->
-    <dependency>
-      <groupId>com.github.steveice10</groupId>
-      <artifactId>packetlib</artifactId>
-      <version>3.0.1</version> <!-- Copied from MCProtocolLib -->
+      <groupId>org.cloudburstmc</groupId>
+      <artifactId>nbt</artifactId>
+      <version>3.0.0.Final</version> <!-- Copied from MCProtocolLib -->
       <scope>compile</scope>
     </dependency>
 
     <!-- MCAuthLib https://github.com/GeyserMC/MCAuthLib
     -->
     <dependency>
-      <groupId>com.github.steveice10</groupId>
+      <groupId>com.github.GeyserMC</groupId>
       <artifactId>mcauthlib</artifactId>
-      <version>6621fd081c</version> <!-- Copied from MCProtocolLib -->
+      <version>e5b0bcc</version> <!-- Copied from MCProtocolLib -->
       <scope>compile</scope>
     </dependency>
 
@@ -137,8 +127,8 @@
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.2</version>
         <configuration>
-          <source>17</source>
-          <target>17</target>
+          <source>21</source>
+          <target>21</target>
           <showDeprecation>true</showDeprecation>
           <showWarnings>true</showWarnings>
           <compilerArgs>
@@ -161,10 +151,9 @@
             <configuration>
               <artifactSet>
                 <includes>
-                  <include>com.github.steveice10:mcprotocollib</include>
-                  <include>com.github.steveice10:opennbt</include>
-                  <include>com.github.steveice10:packetlib</include>
-                  <include>com.github.steveice10:mcauthlib</include>
+                  <include>org.geysermc.mcprotocollib:protocol</include>
+                  <include>com.github.GeyserMC:mcauthlib</include>
+                  <include>org.cloudburstmc:nbt</include>
 		  <include>net.kyori:adventure-text-serializer-gson-legacy-impl</include>
 		  <include>net.kyori:adventure-text-serializer-json-legacy-impl</include>
 		  <include>net.kyori:adventure-nbt</include>
@@ -182,28 +171,22 @@
                   </includes>
                 </filter>
                 <filter>
-                  <artifact>com.github.steveice10:mcprotocollib</artifact>
+                  <artifact>org.geysermc.mcprotocollib:protocol</artifact>
                   <includes>
-                    <include>com/github/steveice10/**</include>
+                    <include>org/geysermc/mcprotocollib/**</include>
                   </includes>
                 </filter>
                 <filter>
-                  <artifact>com.github.steveice10:opennbt</artifact>
+                  <artifact>org.cloudburstmc:nbt</artifact>
                   <includes>
-                    <include>com/github/steveice10/**</include>
+                    <include>org/cloudburstmc/nbt/**</include>
                   </includes>
                 </filter>
                 <filter>
-                  <artifact>com.github.steveice10:packetlib</artifact>
+                  <artifact>com.github.GeyserMC:mcauthlib</artifact>
                   <includes>
-                    <include>com/github/steveice10/**</include>
-                  </includes>
-                </filter>
-                <filter>
-                  <artifact>com.github.steveice10:mcauthlib</artifact>
-                  <includes>
-                    <include>com/github/steveice10/**</include>
-                    <include>yggdrasil_session_pubkey.der</include>
+                    <include>com/github/steveice10/mc/auth/**</include>
+		    <include>yggdrasil_session_pubkey.der</include>
                   </includes>
                 </filter>
                 <filter>
