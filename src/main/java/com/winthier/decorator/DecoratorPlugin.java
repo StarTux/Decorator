@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -108,6 +109,20 @@ public final class DecoratorPlugin extends JavaPlugin {
         todoWorld.initialized = true;
         if (batchMode) {
             getLogger().info("World " + theWorld.getName() + ": " + todoWorld.totalRegions + " regions scheduled.");
+        }
+        if (todoWorld.pass == 2 && Bukkit.getPluginManager().isPluginEnabled("MagicMap")) {
+            final String displayName = switch (todoWorld.world) {
+            case "mine" -> "Mining Overworld";
+            case "mine_nether" -> "Mining Nether";
+            case "mine_the_end" -> "Mining End";
+            default -> "???";
+            };
+            final List<String> magicMapCommands = List.of("magicmap displayname set " + todoWorld.world + " " + displayName,
+                                                          "magicmap fullrender start " + todoWorld.world);
+            for (String magicMapCommand : magicMapCommands) {
+                getLogger().info("Dispatching command: " + magicMapCommand);
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), magicMapCommand);
+            }
         }
     }
 
