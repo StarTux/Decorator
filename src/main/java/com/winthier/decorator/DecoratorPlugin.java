@@ -45,6 +45,7 @@ public final class DecoratorPlugin extends JavaPlugin {
     int fakeCooldown;
     int previousChunks = 0;
     boolean doShutdown;
+    int doShutdownTicks = 0;
     int chunksPending = 0;
     long chunksPendingCooldown;
     // Components
@@ -117,8 +118,7 @@ public final class DecoratorPlugin extends JavaPlugin {
             case "mine_the_end" -> "Mining End";
             default -> "???";
             };
-            final List<String> magicMapCommands = List.of("magicmap displayname set " + todoWorld.world + " " + displayName,
-                                                          "magicmap fullrender start " + todoWorld.world);
+            final List<String> magicMapCommands = List.of("magicmap displayname set " + todoWorld.world + " " + displayName);
             for (String magicMapCommand : magicMapCommands) {
                 getLogger().info("Dispatching command: " + magicMapCommand);
                 Bukkit.dispatchCommand(Bukkit.getConsoleSender(), magicMapCommand);
@@ -235,6 +235,19 @@ public final class DecoratorPlugin extends JavaPlugin {
                 ioe.printStackTrace();
                 paused = true;
                 return;
+            }
+        }
+        if (todoWorld.pass == todoWorld.passes) {
+            // Render previously handled region.  There is potential
+            // for this to be called twice for the (0, 0) region of
+            // the first world.  As long as this world has more than
+            // one pass, it's not going to happen.  Either way, it's
+            // not a problem.
+            final List<String> magicMapCommands = List.of("magicmap worlds renderregion "
+                                                          + todoWorld.world + " " + currentRegion.x + " " + currentRegion.z);
+            for (String magicMapCommand : magicMapCommands) {
+                getLogger().info("Dispatching command: " + magicMapCommand);
+                Bukkit.dispatchCommand(Bukkit.getConsoleSender(), magicMapCommand);
             }
         }
         todoWorld.totalChunks = todoWorld.chunks.size();
@@ -357,7 +370,7 @@ public final class DecoratorPlugin extends JavaPlugin {
             });
     }
 
-    void tick() {
+    private void tick() {
         if (todo == null) return;
         if (paused) return;
         if (tickCooldown > 0) {
@@ -375,7 +388,13 @@ public final class DecoratorPlugin extends JavaPlugin {
                     return;
                 }
             }
-            Bukkit.shutdown();
+            final int doShutdownTicksGoal = 20 * 20;
+            if (doShutdownTicks > doShutdownTicksGoal) {
+                Bukkit.shutdown();
+            } else {
+                doShutdownTicks += 1;
+                getLogger().info("Shutdown " + doShutdownTicks + "/" + doShutdownTicksGoal);
+            }
             return;
         }
         // Set tickCooldown
