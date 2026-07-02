@@ -1,141 +1,22 @@
 <project>
   <modelVersion>4.0.0</modelVersion>
 
+  <parent>
+    <groupId>com.cavetale.pom</groupId>
+    <artifactId>cavetale-pom-base</artifactId>
+    <version>0.1-SNAPSHOT</version>
+  </parent>
+
   <groupId>com.winthier.decorator</groupId>
   <artifactId>decorator</artifactId>
   <version>0.1-SNAPSHOT</version>
 
-  <packaging>jar</packaging>
   <name>Decorator</name>
   <url>https://github.com/StarTux/Decorator</url>
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-  </properties>
-  <repositories>
+  <packaging>jar</packaging>
 
-    <!-- Paper Repo -->
-    <repository>
-      <id>papermc</id>
-      <url>https://repo.papermc.io/repository/maven-public/</url>
-    </repository>
-
-    <!-- MCProtocolLib -->
-    <repository>
-      <id>jitpack.io</id>
-      <url>https://jitpack.io</url>
-    </repository>
-
-    <!-- Math -->
-    <repository>
-      <id>opencollab-release-repo</id>
-      <url>https://repo.opencollab.dev/maven-releases/</url>
-      <releases>
-        <enabled>true</enabled>
-      </releases>
-      <snapshots>
-        <enabled>false</enabled>
-      </snapshots>
-    </repository>
-    <repository>
-      <id>opencollab-snapshot-repo</id>
-      <url>https://repo.opencollab.dev/maven-snapshots/</url>
-      <releases>
-        <enabled>false</enabled>
-      </releases>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
-    </repository>
-
-  </repositories>
-  <dependencies>
-
-    <!-- Paper API -->
-    <dependency>
-      <groupId>io.papermc.paper</groupId>
-      <artifactId>paper-api</artifactId>
-      <version>1.21.11-R0.1-SNAPSHOT</version> <!-- Paper Version -->
-      <scope>provided</scope>
-    </dependency>
-
-    <!-- Lombok -->
-    <dependency>
-      <groupId>org.projectlombok</groupId>
-      <artifactId>lombok</artifactId>
-      <version>1.18.32</version>
-      <scope>compile</scope>
-    </dependency>
-
-    <!-- MCProtocolLib https://github.com/GeyserMC/MCProtocolLib
-    -->
-    <dependency>
-      <groupId>org.geysermc.mcprotocollib</groupId>
-      <artifactId>protocol</artifactId>
-      <version>1.21.11-SNAPSHOT</version>
-      <scope>compile</scope>
-    </dependency>
-
-    <!-- Cloudburst NBT https://github.com/CloudburstMC/NBT
-    -->
-    <dependency>
-      <groupId>org.cloudburstmc</groupId>
-      <artifactId>nbt</artifactId>
-      <version>3.0.0.Final</version> <!-- Copied from MCProtocolLib -->
-      <scope>compile</scope>
-    </dependency>
-
-    <!-- MCAuthLib https://github.com/GeyserMC/MCAuthLib
-    -->
-    <dependency>
-      <groupId>com.github.GeyserMC</groupId>
-      <artifactId>mcauthlib</artifactId>
-      <version>e5b0bcc</version> <!-- Copied from MCProtocolLib -->
-      <scope>compile</scope>
-    </dependency>
-
-    <!-- Math -->
-    <dependency>
-      <groupId>org.cloudburstmc.math</groupId>
-      <artifactId>api</artifactId>
-      <version>2.0</version>
-      <scope>compile</scope>
-    </dependency>
-
-    <!-- Immutable -->
-    <dependency>
-      <groupId>org.cloudburstmc.math</groupId>
-      <artifactId>immutable</artifactId>
-      <version>2.0</version>
-      <scope>compile</scope>
-    </dependency>
-
-    <!-- Fastutil -->
-    <dependency>
-      <groupId>com.nukkitx.fastutil</groupId>
-      <artifactId>fastutil-object-int-maps</artifactId>
-      <version>8.5.3</version>
-      <scope>compile</scope>
-    </dependency>
-
-  </dependencies>
   <build>
-    <finalName>${project.name}</finalName>
     <plugins>
-
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <version>3.2</version>
-        <configuration>
-          <source>21</source>
-          <target>21</target>
-          <showDeprecation>true</showDeprecation>
-          <showWarnings>true</showWarnings>
-          <compilerArgs>
-            <arg>-Xlint:unchecked</arg>
-          </compilerArgs>
-        </configuration>
-      </plugin>
 
       <!-- Shade -->
       <plugin>
@@ -221,4 +102,104 @@
 
     </plugins>
   </build>
+
+  <repositories>
+
+    <!-- MCProtocolLib -->
+    <repository>
+      <id>jitpack.io</id>
+      <url>https://jitpack.io</url>
+    </repository>
+
+    <!-- Math -->
+    <repository>
+      <id>opencollab-release-repo</id>
+      <url>https://repo.opencollab.dev/maven-releases/</url>
+      <releases>
+        <enabled>true</enabled>
+      </releases>
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+    </repository>
+    <repository>
+      <id>opencollab-snapshot-repo</id>
+      <url>https://repo.opencollab.dev/maven-snapshots/</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+    </repository>
+
+  </repositories>
+  <dependencies>
+
+    <!-- Paper API -->
+    <dependency>
+      <groupId>io.papermc.paper</groupId>
+      <artifactId>paper-api</artifactId>
+      <scope>provided</scope>
+    </dependency>
+
+    <!-- Lombok -->
+    <dependency>
+      <groupId>org.projectlombok</groupId>
+      <artifactId>lombok</artifactId>
+      <scope>compile</scope>
+    </dependency>
+
+    <!-- MCProtocolLib https://github.com/GeyserMC/MCProtocolLib
+    -->
+    <dependency>
+      <groupId>org.geysermc.mcprotocollib</groupId>
+      <artifactId>protocol</artifactId>
+      <version>26.1-SNAPSHOT</version>
+      <scope>compile</scope>
+    </dependency>
+
+    <!-- Cloudburst NBT https://github.com/CloudburstMC/NBT
+    -->
+    <dependency>
+      <groupId>org.cloudburstmc</groupId>
+      <artifactId>nbt</artifactId>
+      <version>3.0.4.Final</version> <!-- Copied from MCProtocolLib -->
+      <scope>compile</scope>
+    </dependency>
+
+    <!-- MCAuthLib https://github.com/GeyserMC/MCAuthLib
+    -->
+    <dependency>
+      <groupId>com.github.GeyserMC</groupId>
+      <artifactId>mcauthlib</artifactId>
+      <version>e5b0bcc</version> <!-- Copied from MCProtocolLib -->
+      <scope>compile</scope>
+    </dependency>
+
+    <!-- Math -->
+    <dependency>
+      <groupId>org.cloudburstmc.math</groupId>
+      <artifactId>api</artifactId>
+      <version>2.0</version>
+      <scope>compile</scope>
+    </dependency>
+
+    <!-- Immutable -->
+    <dependency>
+      <groupId>org.cloudburstmc.math</groupId>
+      <artifactId>immutable</artifactId>
+      <version>2.0</version>
+      <scope>compile</scope>
+    </dependency>
+
+    <!-- Fastutil -->
+    <dependency>
+      <groupId>com.nukkitx.fastutil</groupId>
+      <artifactId>fastutil-object-int-maps</artifactId>
+      <version>8.5.3</version>
+      <scope>compile</scope>
+    </dependency>
+
+  </dependencies>
 </project>
