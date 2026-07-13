@@ -155,7 +155,7 @@
     <dependency>
       <groupId>org.geysermc.mcprotocollib</groupId>
       <artifactId>protocol</artifactId>
-      <version>26.1-SNAPSHOT</version>
+      <version>26.2-SNAPSHOT</version>
       <scope>compile</scope>
     </dependency>
 
