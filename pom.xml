@@ -33,6 +33,7 @@
               <artifactSet>
                 <includes>
                   <include>org.geysermc.mcprotocollib:protocol</include>
+                  <include>org.geysermc.mcprotocollib:text-serializer-nbt</include>
                   <include>com.github.GeyserMC:mcauthlib</include>
                   <include>org.cloudburstmc:nbt</include>
 		  <include>net.kyori:adventure-text-serializer-gson-legacy-impl</include>
@@ -163,6 +164,14 @@
       <groupId>org.geysermc.mcprotocollib</groupId>
       <artifactId>protocol</artifactId>
       <version>26.2-SNAPSHOT</version>
+      <scope>compile</scope>
+    </dependency>
+
+    <!-- text-serializer-nbt -->
+    <dependency>
+      <groupId>org.geysermc.mcprotocollib</groupId>
+      <artifactId>text-serializer-nbt</artifactId>
+      <version>0.2.1</version>
       <scope>compile</scope>
     </dependency>
 
